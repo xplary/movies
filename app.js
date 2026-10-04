@@ -30,8 +30,17 @@ const episodeSelector = document.getElementById("episode-selector");
 
 document.addEventListener("DOMContentLoaded", () => {
   setupEventListeners();
+  checkAdblockNotice();
   loadHomepage();
 });
+
+// Comprobar si ya se cerró el aviso de uBlock anteriormente
+function checkAdblockNotice() {
+  const adblockNotice = document.getElementById("adblock-notice");
+  if (localStorage.getItem("vest_ublock_seen") === "true") {
+    if (adblockNotice) adblockNotice.style.display = "none";
+  }
+}
 
 function showHomeView() {
   homeView.classList.remove("hidden");
@@ -64,13 +73,23 @@ function setupEventListeners() {
     theaterModal.classList.add("hidden");
     theaterIframe.src = ""; 
     
-    // RESTAURAR SCROLL DEL BODY AL CERRAR REPRODUCTOR
+    // Restaurar scroll del body al cerrar reproductor
     document.body.classList.remove("theater-open");
     
     if (state.heroItems.length > 0 && !state.heroInterval) {
       setupHeroRotation(state.heroItems);
     }
   });
+
+  // Funcionalidad para cerrar el aviso de uBlock y guardarlo en localStorage
+  const closeNoticeBtn = document.getElementById("close-notice");
+  const adblockNotice = document.getElementById("adblock-notice");
+  if (closeNoticeBtn && adblockNotice) {
+    closeNoticeBtn.addEventListener("click", () => {
+      adblockNotice.style.display = "none";
+      localStorage.setItem("vest_ublock_seen", "true");
+    });
+  }
 
   searchForm.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -247,7 +266,7 @@ async function openTheaterMode(item) {
   seasonSelector.classList.add("hidden");
   episodeSelector.classList.add("hidden");
 
-  // BLOQUEAR EL SCROLL DE LA PÁGINA DE FONDO AL ABRIR EL REPRODUCTOR
+  // Bloquear scroll de la página de fondo al abrir reproductor
   document.body.classList.add("theater-open");
 
   const cleanTitle = (item.title || '').replace("VER ", "").replace(" Online Gratis HD", "");
