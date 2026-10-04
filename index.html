@@ -15,7 +15,6 @@
 <body>
   <div class="bg-shape shape-1"></div>
   <div class="bg-shape shape-2"></div>
-  <div class="drawer-backdrop" id="drawer-backdrop"></div>
 
   <!-- Navbar -->
   <nav class="netflix-navbar" id="netflix-navbar">
@@ -62,8 +61,7 @@
         </div>
         <p class="hero-synopsis" id="hero-synopsis">Conectando con el servidor...</p>
         <div class="hero-actions">
-          <button class="btn-hero play" id="hero-play-btn"><ion-icon name="play-sharp"></ion-icon><span>Ver Ahora</span></button>
-          <button class="btn-hero info" id="hero-info-btn"><ion-icon name="information-circle-outline"></ion-icon><span>Detalles</span></button>
+          <button class="btn-hero play" id="hero-play-btn"><ion-icon name="play-sharp"></ion-icon><span>Reproducir Ahora</span></button>
         </div>
       </div>
       <div class="hero-dots" id="hero-dots"></div>
@@ -97,51 +95,31 @@
     <div class="catalog-grid" id="results-grid"></div>
   </section>
 
-  <!-- MODAL DE DETALLES -->
-  <div id="details-panel" class="hidden">
-    <div class="modal-backdrop-close" id="modal-backdrop-close"></div>
-    <button class="btn-close-modal" id="btn-close-modal"><ion-icon name="close-outline"></ion-icon></button>
-
-    <div class="details-content">
-      <div class="video-player-container hidden" id="video-player-container">
-        <div class="player-header">
-          <span id="player-title">Reproduciendo...</span>
-          <button class="btn-close-player" id="close-player-btn"><ion-icon name="close-outline"></ion-icon></button>
+  <!-- THEATER MODAL (Direct Play) -->
+  <div id="theater-modal" class="hidden">
+    <div class="theater-content">
+      <!-- Barra superior sutil (Aparece al hacer hover) -->
+      <div class="theater-topbar">
+        <div class="theater-info">
+          <h3 id="theater-title">Cargando reproductor...</h3>
+          <select id="season-selector" class="subtle-select hidden" title="Temporada"></select>
+          <select id="episode-selector" class="subtle-select hidden" title="Capítulo"></select>
+          <select id="server-selector" class="subtle-select hidden" title="Servidor de Video"></select>
         </div>
-        <div class="player-iframe-wrapper">
-          <iframe id="player-iframe" src="" allowfullscreen></iframe>
-        </div>
+        <button class="btn-close-theater" id="btn-close-theater" title="Cerrar reproductor">
+          <ion-icon name="close-outline"></ion-icon>
+        </button>
       </div>
 
-      <div class="details-body">
-        <div class="details-content-inner" id="details-content">
-          <div class="details-header-card">
-            <img id="details-poster" src="" alt="Poster" class="details-poster">
-            <div class="details-meta-info">
-              <span class="media-type-badge" id="details-type">PELICULA</span>
-              <h3 id="details-title">Título</h3>
-              <p id="details-original-title" class="subtext">Original</p>
-              <div class="meta-row">
-                <div class="meta-item year"><ion-icon name="calendar-outline"></ion-icon><span id="details-year">N/A</span></div>
-                <div class="meta-item rating"><ion-icon name="star"></ion-icon><span id="details-rating">N/A</span></div>
-              </div>
-              <div class="details-genres" id="details-genres"></div>
-            </div>
-          </div>
-          <div class="details-section"><h4>Sinopsis</h4><p id="details-synopsis" class="synopsis-text">...</p></div>
-          
-          <div class="details-section hidden" id="seasons-section">
-            <h4>Temporadas y Capítulos</h4>
-            <div class="seasons-tabs" id="seasons-tabs-container"></div>
-            <div class="episodes-grid" id="episodes-container"></div>
-          </div>
+      <!-- Cargador mientras extrae los enlaces -->
+      <div id="theater-loader" class="theater-loader hidden">
+        <div class="spinner"></div>
+        <p>Extrayendo el mejor servidor...</p>
+      </div>
 
-          <div class="details-section" id="servers-section">
-            <h4 id="servers-section-title">Servidores de Reproducción</h4>
-            <div class="loading-state hidden" id="servers-loading"><div class="spinner"></div><p>Buscando servidores...</p></div>
-            <div class="servers-list" id="servers-container"></div>
-          </div>
-        </div>
+      <!-- Iframe del video a pantalla completa -->
+      <div class="iframe-container">
+        <iframe id="theater-iframe" src="" allowfullscreen></iframe>
       </div>
     </div>
   </div>
