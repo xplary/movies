@@ -34,12 +34,46 @@ document.addEventListener("DOMContentLoaded", () => {
   loadHomepage();
 });
 
-// Comprobar si ya se cerró el aviso de uBlock anteriormente
+// Comprobar si ya se vio el aviso de uBlock
 function checkAdblockNotice() {
   const adblockNotice = document.getElementById("adblock-notice");
   if (localStorage.getItem("vest_ublock_seen") === "true") {
     if (adblockNotice) adblockNotice.style.display = "none";
   }
+}
+
+// GESTIÓN DEL CACHÉ PARA "SEGUIR VIENDO"
+function getContinueWatching() {
+  try {
+    return JSON.parse(localStorage.getItem("vest_continue_watching")) || [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveToContinueWatching(item) {
+  let list = getContinueWatching();
+  // Evitar duplicados y poner el más reciente al inicio
+  list = list.filter(i => i.slug !== item.slug);
+  list.unshift(item);
+  if (list.length > 10) list = list.slice(0, 10); // Máximo 10 elementos
+  localStorage.setItem("vest_continue_watching", JSON.stringify(list));
+  renderContinueWatching();
+}
+
+function renderContinueWatching() {
+  const list = getContinueWatching();
+  const row = document.getElementById("continue-row");
+  const container = document.getElementById("carousel-continue");
+  if (!row || !container) return;
+
+  if (list.length === 0) {
+    row.classList.add("hidden");
+    return;
+  }
+
+  row.classList.remove("hidden");
+  renderCarousel(container, list, "continue");
 }
 
 function showHomeView() {
@@ -49,6 +83,8 @@ function showHomeView() {
   document.getElementById("nav-item-home").classList.add("active");
   searchInput.value = "";
   
+  renderContinueWatching(); // Actualizar fila de caché al volver al inicio
+
   if (state.heroItems.length > 0 && !state.heroInterval) {
     setupHeroRotation(state.heroItems);
   }
@@ -72,8 +108,6 @@ function setupEventListeners() {
   document.getElementById("btn-close-theater").addEventListener("click", () => {
     theaterModal.classList.add("hidden");
     theaterIframe.src = ""; 
-    
-    // Restaurar scroll del body al cerrar reproductor
     document.body.classList.remove("theater-open");
     
     if (state.heroItems.length > 0 && !state.heroInterval) {
@@ -81,7 +115,6 @@ function setupEventListeners() {
     }
   });
 
-  // Funcionalidad para cerrar el aviso de uBlock y guardarlo en localStorage
   const closeNoticeBtn = document.getElementById("close-notice");
   const adblockNotice = document.getElementById("adblock-notice");
   if (closeNoticeBtn && adblockNotice) {
@@ -134,6 +167,7 @@ async function apiFetch(endpoint) {
 }
 
 async function loadHomepage() {
+  renderContinueWatching(); // Cargar caché al iniciar
   try {
     const [moviesData, seriesData, animeData] = await Promise.all([
       apiFetch("/catalog?type=movie&page=1").catch(() => null),
@@ -174,7 +208,7 @@ function renderCarousel(container, items, type) {
   });
 }
 
-/* BÚSQUEDA INTELIGENTE CON SINÓNIMOS CRUZADOS */
+/* BÚSQUEDA INTELIGENTE */
 async function performSearch(query) {
   showGridView(`Búsqueda: "${query}"`);
   document.getElementById("results-loading").classList.remove("hidden");
@@ -249,6 +283,9 @@ async function setupHeroBanner(item) {
 }
 
 async function openTheaterMode(item) {
+  // Guardar en el caché local de "Seguir Viendo" al reproducir
+  saveToContinueWatching(item);
+
   if (state.heroInterval) {
     clearInterval(state.heroInterval);
     state.heroInterval = null;
@@ -266,7 +303,6 @@ async function openTheaterMode(item) {
   seasonSelector.classList.add("hidden");
   episodeSelector.classList.add("hidden");
 
-  // Bloquear scroll de la página de fondo al abrir reproductor
   document.body.classList.add("theater-open");
 
   const cleanTitle = (item.title || '').replace("VER ", "").replace(" Online Gratis HD", "");
