@@ -7,7 +7,9 @@ const state = {
   selectedMedia: null,
   heroItems: [],
   heroIndex: 0,
-  heroInterval: null
+  heroInterval: null,
+  serversList: [],
+  currentServerIndex: 0
 };
 
 const searchForm = document.getElementById("search-form");
@@ -22,6 +24,7 @@ const theaterTitle = document.getElementById("theater-title");
 const theaterLoader = document.getElementById("theater-loader");
 const theaterIframe = document.getElementById("theater-iframe");
 const serverSelector = document.getElementById("server-selector");
+const nextServerBtn = document.getElementById("btn-next-server");
 const seasonSelector = document.getElementById("season-selector");
 const episodeSelector = document.getElementById("episode-selector");
 
@@ -66,9 +69,18 @@ function setupEventListeners() {
       loadFilteredCatalog(type);
     });
   });
+
+  // Botón para cambiar instantáneamente al siguiente servidor
+  nextServerBtn.addEventListener("click", () => {
+    if (!state.serversList || state.serversList.length === 0) return;
+    state.currentServerIndex = (state.currentServerIndex + 1) % state.serversList.length;
+    const srv = state.serversList[state.currentServerIndex];
+    serverSelector.value = srv.embedUrl || srv.url || srv.link;
+    theaterIframe.src = serverSelector.value;
+  });
 }
 
-// Petición robusta con Timeout para evitar bloqueos en datos móviles
+// Petición robusta con Timeout
 async function apiFetch(endpoint) {
   const url = endpoint === "/health" ? `${RENDER_URL}/health` : `${API_BASE}${endpoint}`;
   const controller = new AbortController();
@@ -128,7 +140,7 @@ function renderCarousel(container, items, type) {
   });
 }
 
-/* BÚSQUEDA INTELIGENTE CON SINÓNIMOS CRUZADOS (Ej: Spiderman <-> El hombre araña) */
+/* BÚSQUEDA INTELIGENTE CON SINÓNIMOS CRUZADOS */
 async function performSearch(query) {
   showGridView(`Búsqueda: "${query}"`);
   document.getElementById("results-loading").classList.remove("hidden");
@@ -209,6 +221,7 @@ async function openTheaterMode(item) {
   episodeSelector.innerHTML = "";
   
   serverSelector.classList.add("hidden");
+  nextServerBtn.classList.add("hidden");
   seasonSelector.classList.add("hidden");
   episodeSelector.classList.add("hidden");
 
@@ -269,6 +282,7 @@ async function openTheaterMode(item) {
 async function loadEpisodeServers(season, episode) {
   theaterLoader.classList.remove("hidden");
   serverSelector.classList.add("hidden");
+  nextServerBtn.classList.add("hidden");
   theaterIframe.src = "";
   
   try {
@@ -305,6 +319,9 @@ function autoPlayBestServer(servers) {
     return 0;
   });
 
+  state.serversList = servers;
+  state.currentServerIndex = 0;
+
   serverSelector.innerHTML = "";
   servers.forEach(srv => {
     const opt = document.createElement("option");
@@ -314,7 +331,11 @@ function autoPlayBestServer(servers) {
   });
 
   serverSelector.classList.remove("hidden");
+  nextServerBtn.classList.remove("hidden");
+
   serverSelector.onchange = () => {
+    const idx = state.serversList.findIndex(s => (s.embedUrl || s.url || s.link) === serverSelector.value);
+    if (idx !== -1) state.currentServerIndex = idx;
     theaterIframe.src = serverSelector.value;
   };
 
