@@ -26,19 +26,10 @@ body { background-color: var(--bg-color); color: var(--text); overflow-x: hidden
 /* Búsqueda */
 .search-box-wrapper { display: flex; align-items: center; background: rgba(255,255,255,0.06); border-radius: 20px; padding: 6px 16px; border: 1px solid rgba(255,255,255,0.1); transition: 0.3s; }
 .search-box-wrapper:focus-within { border-color: #ec4899; background: rgba(18, 16, 25, 0.8); box-shadow: 0 0 15px var(--primary-glow); }
-.search-box-wrapper input { background: transparent; border: none; color: white; outline: none; margin-left: 10px; font-size: 14px; width: 180px; transition: width 0.3s; }
+.search-box-wrapper input { background: transparent; border: none; color: white; outline: none; margin-left: 10px; font-size: 14px; width: 200px; transition: width 0.3s; }
 
-/* Status Badge y estado de carga */
-.api-status-badge { display: flex; align-items: center; gap: 8px; margin-left: 20px; font-size: 12px; font-weight: 500; }
-.status-dot { width: 8px; height: 8px; border-radius: 50%; }
-.online .status-dot { background-color: #10b981; box-shadow: 0 0 10px #10b981; }
-.offline .status-dot { background-color: #ef4444; box-shadow: 0 0 10px #ef4444; }
-.loading .status-dot { background-color: #f59e0b; box-shadow: 0 0 10px #f59e0b; animation: pulse-dot 1s infinite; }
-
-@keyframes pulse-dot { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
-
-/* Hero Banner */
-.hero-banner { height: 75vh; background-size: cover; background-position: top center; display: flex; align-items: flex-end; position: relative; }
+/* Hero Banner Optimizado para Máxima Nitidez */
+.hero-banner { height: 75vh; background-size: cover; background-position: center center; background-repeat: no-repeat; display: flex; align-items: flex-end; position: relative; image-rendering: -webkit-optimize-contrast; }
 .hero-banner::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, var(--bg-color) 0%, rgba(7,6,10,0.4) 50%, transparent 100%); }
 .hero-content { position: relative; z-index: 10; padding: 50px; max-width: 650px; }
 .hero-type-badge { background: var(--primary-gradient); font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 6px; letter-spacing: 1px; color: white; box-shadow: 0 4px 12px var(--primary-glow); }
@@ -56,13 +47,13 @@ body { background-color: var(--bg-color); color: var(--text); overflow-x: hidden
 .carousel-row h2 { margin-bottom: 15px; font-size: 20px; font-weight: 700; color: #f3f4f6; letter-spacing: 0.3px; }
 .carousel-container, .catalog-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px; }
 
-/* Cards & Shimmer Effect para carga en datos móviles */
+/* Cards & Shimmer Effect */
 .media-card { cursor: pointer; transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
 .media-card:hover { transform: translateY(-6px) scale(1.02); }
 .poster-wrapper { position: relative; border-radius: 12px; overflow: hidden; aspect-ratio: 2/3; box-shadow: 0 8px 20px rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.08); background: linear-gradient(90deg, #161320 25%, #231f33 50%, #161320 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
-.poster-img { width: 100%; height: 100%; object-fit: cover; transition: opacity 0.3s ease; position: relative; z-index: 2; }
+.poster-img { width: 100%; height: 100%; object-fit: cover; transition: opacity 0.3s ease; position: relative; z-index: 2; image-rendering: -webkit-optimize-contrast; }
 .poster-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(139,92,246,0.5), rgba(236,72,153,0.5)); display: flex; justify-content: center; align-items: center; opacity: 0; transition: opacity 0.3s; backdrop-filter: blur(2px); z-index: 3; }
 .media-card:hover .poster-overlay { opacity: 1; }
 .poster-overlay ion-icon { font-size: 55px; color: white; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.5)); }
@@ -121,7 +112,6 @@ body { background-color: var(--bg-color); color: var(--text); overflow-x: hidden
   .search-container { flex-grow: 1; }
   .search-box-wrapper { width: 100%; padding: 5px 12px; }
   .search-box-wrapper input { width: 100%; font-size: 13px; }
-  .api-status-badge { margin-left: 10px; font-size: 11px; }
 
   .hero-banner { height: 65vh; margin-top: 105px; }
   .hero-content { padding: 20px; max-width: 100%; }
