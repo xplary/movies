@@ -88,6 +88,28 @@ body { background-color: var(--bg-color); color: var(--text); overflow-x: hidden
 .subtle-select:hover { background: rgba(50, 40, 75, 0.9); border-color: rgba(236, 72, 153, 0.8); }
 .subtle-select option { background: #121019; color: white; }
 
+/* Botón de reproducción camuflado para cambiar opción */
+.btn-play-fallback {
+  background: var(--primary-gradient);
+  border: none;
+  color: white;
+  padding: 7px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: 0.3s;
+  box-shadow: 0 4px 15px var(--primary-glow);
+}
+.btn-play-fallback:hover {
+  filter: brightness(1.15);
+  transform: scale(1.03);
+  box-shadow: 0 6px 20px var(--primary-glow);
+}
+
 .btn-close-theater { 
   background: transparent; border: none; color: white; font-size: 35px; 
   cursor: pointer; transition: 0.2s; opacity: 0.8; 
@@ -124,8 +146,8 @@ body { background-color: var(--bg-color); color: var(--text); overflow-x: hidden
   .carousel-row h2 { font-size: 17px; }
 
   .theater-topbar { padding: 12px 16px; flex-direction: column; align-items: flex-start; gap: 10px; opacity: 1 !important; background: rgba(7, 6, 10, 0.98); }
-  .theater-info { width: 100%; gap: 8px; }
+  .theater-info { width: 100%; gap: 8px; flex-wrap: wrap; }
   .theater-info h3 { font-size: 14px; width: 100%; margin-right: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .subtle-select { font-size: 11px; padding: 5px 8px; flex-grow: 1; }
+  .subtle-select, .btn-play-fallback { font-size: 11px; padding: 6px 12px; flex-grow: 1; }
   .btn-close-theater { position: absolute; top: 10px; right: 15px; font-size: 28px; }
 }
