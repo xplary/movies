@@ -88,7 +88,7 @@ body { background-color: var(--bg-color); color: var(--text); overflow-x: hidden
 .subtle-select:hover { background: rgba(50, 40, 75, 0.9); border-color: rgba(236, 72, 153, 0.8); }
 .subtle-select option { background: #121019; color: white; }
 
-/* Botón de reproducción camuflado para cambiar opción */
+/* Botón de reproducción para cambiar opción */
 .btn-play-fallback {
   background: var(--primary-gradient);
   border: none;
