@@ -39,12 +39,23 @@ function showHomeView() {
   document.querySelectorAll(".netflix-navbar li").forEach(li => li.classList.remove("active"));
   document.getElementById("nav-item-home").classList.add("active");
   searchInput.value = "";
+  
+  // Reiniciar rotación de banner si regresa a inicio
+  if (state.heroItems.length > 0 && !state.heroInterval) {
+    setupHeroRotation(state.heroItems);
+  }
 }
 
 function showGridView(titleText) {
   homeView.classList.add("hidden");
   gridView.classList.remove("hidden");
   document.getElementById("results-title").textContent = titleText;
+
+  // Pausar banner para ahorrar recursos en la sección de catálogo/búsqueda
+  if (state.heroInterval) {
+    clearInterval(state.heroInterval);
+    state.heroInterval = null;
+  }
 }
 
 function setupEventListeners() {
@@ -53,7 +64,12 @@ function setupEventListeners() {
   
   document.getElementById("btn-close-theater").addEventListener("click", () => {
     theaterModal.classList.add("hidden");
-    theaterIframe.src = "";
+    theaterIframe.src = ""; // Detener video por completo al cerrar
+    
+    // Reactivar rotación del banner principal al cerrar el reproductor
+    if (state.heroItems.length > 0 && !state.heroInterval) {
+      setupHeroRotation(state.heroItems);
+    }
   });
 
   searchForm.addEventListener("submit", (e) => {
@@ -70,7 +86,6 @@ function setupEventListeners() {
     });
   });
 
-  // Botón para cambiar instantáneamente al siguiente servidor
   nextServerBtn.addEventListener("click", () => {
     if (!state.serversList || state.serversList.length === 0) return;
     state.currentServerIndex = (state.currentServerIndex + 1) % state.serversList.length;
@@ -127,7 +142,7 @@ function renderCarousel(container, items, type) {
     
     card.innerHTML = `
       <div class="poster-wrapper">
-        <img src="${poster}" class="poster-img" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1485846234645-a62644f84728?q=80&w=400';">
+        <img src="${poster}" class="poster-img" loading="lazy" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1485846234645-a62644f84728?q=80&w=400';">
         <div class="poster-overlay"><ion-icon name="play-circle-sharp"></ion-icon></div>
         ${item.rating ? `<span class="rating-badge"><ion-icon name="star"></ion-icon>${item.rating}</span>` : ''}
       </div>
@@ -197,7 +212,9 @@ function setupHeroRotation(items) {
   state.heroItems = items.slice(0, 5);
   state.heroIndex = 0;
   setupHeroBanner(state.heroItems[0]);
-  setInterval(() => {
+  
+  if (state.heroInterval) clearInterval(state.heroInterval);
+  state.heroInterval = setInterval(() => {
     state.heroIndex = (state.heroIndex + 1) % state.heroItems.length;
     setupHeroBanner(state.heroItems[state.heroIndex]);
   }, 8000);
@@ -213,6 +230,12 @@ async function setupHeroBanner(item) {
 }
 
 async function openTheaterMode(item) {
+  // PAUSAR EL BANNER PRINCIPAL PARA LIBERAR 100% LOS RECURSOS DE LA PÁGINA
+  if (state.heroInterval) {
+    clearInterval(state.heroInterval);
+    state.heroInterval = null;
+  }
+
   theaterModal.classList.remove("hidden");
   theaterLoader.classList.remove("hidden");
   theaterIframe.src = "";
