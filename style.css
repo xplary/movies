@@ -110,3 +110,39 @@ body { background-color: var(--bg-color); color: var(--text); overflow-x: hidden
 /* Contenedor del Video */
 .iframe-container { width: 100%; height: 100%; flex-grow: 1; background: #000; }
 .iframe-container iframe { width: 100%; height: 100%; border: none; }
+
+/* ========================================= */
+/* REPRODUCTOR DE VIDEO PROPIO (PLYR)        */
+/* ========================================= */
+
+/* Tematizar Plyr con el color Rojo Cypher/Netflix */
+:root {
+  --plyr-color-main: #e50914;
+  --plyr-video-background: #000;
+  --plyr-menu-background: rgba(20, 20, 20, 0.9);
+}
+
+.video-container { 
+  width: 100%; 
+  height: 100%; 
+  flex-grow: 1; 
+  background: #000; 
+  display: flex; 
+  flex-direction: column; 
+}
+
+/* Forzar al reproductor Plyr a ocupar todo el espacio disponible */
+.plyr { 
+  width: 100%; 
+  height: 100%; 
+  flex-grow: 1; 
+}
+
+.plyr__video-wrapper { 
+  height: 100%; 
+}
+
+.plyr__video-wrapper video { 
+  height: 100%; 
+  object-fit: contain; 
+}
