@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CineWeb - Películas</title>
+    <title>CineWeb - Audio en Español</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         body { background-color: #141414; color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -23,16 +22,17 @@
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         #player-modal { backdrop-filter: blur(5px); }
+        .server-btn.active { background-color: #e50914; color: white; border-color: #e50914; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
 
     <!-- Navbar -->
     <nav class="flex items-center justify-between p-5 bg-[#0b0b0b] shadow-lg sticky top-0 z-50">
-        <div class="text-2xl font-bold text-red-600"><i class="fas fa-play-circle mr-2"></i>CineWeb</div>
+        <div class="text-2xl font-bold text-red-600"><i class="fas fa-play-circle mr-2"></i>CineWeb Español</div>
         <div class="flex items-center space-x-4">
             <form id="search-form" class="relative">
-                <input type="text" id="search-input" placeholder="Buscar película..." class="bg-[#2b2b2b] text-white px-4 py-2 rounded-full outline-none focus:ring-2 focus:ring-red-600">
+                <input type="text" id="search-input" placeholder="Buscar película..." class="bg-[#2b2b2b] text-white px-4 py-2 rounded-full outline-none focus:ring-2 focus:ring-red-600 text-sm">
                 <button type="submit" class="absolute right-3 top-2.5 text-gray-400 hover:text-white"><i class="fas fa-search"></i></button>
             </form>
             <button onclick="toggleSettings()" class="text-gray-400 hover:text-white text-xl" title="Configuración"><i class="fas fa-cog"></i></button>
@@ -43,23 +43,15 @@
     <main class="flex-grow p-8">
         <h2 id="section-title" class="text-2xl mb-6 font-semibold border-l-4 border-red-600 pl-3">Películas Populares</h2>
         <div class="loader" id="main-loader"></div>
-        <div id="movies-grid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-            <!-- Movies injected here -->
-        </div>
+        <div id="movies-grid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6"></div>
     </main>
 
     <!-- Settings Modal -->
     <div id="settings-modal" class="fixed inset-0 bg-black bg-opacity-80 hidden flex justify-center items-center z-50">
         <div class="bg-[#1e1e1e] p-8 rounded-lg w-full max-w-md shadow-2xl">
             <h3 class="text-xl font-bold mb-4">Configuración del Sistema</h3>
-            
             <label class="block text-sm text-gray-400 mb-2">TMDB API Key</label>
-            <input type="text" id="tmdb-key-input" class="w-full bg-[#2b2b2b] text-white p-2 rounded mb-4 outline-none border border-gray-700 focus:border-red-600" placeholder="Pega tu API Key de TMDB">
-            
-            <label class="block text-sm text-gray-400 mb-2">URL del Backend (Render)</label>
-            <input type="text" id="backend-url-input" class="w-full bg-[#2b2b2b] text-gray-400 p-2 rounded mb-6 outline-none border border-gray-700 cursor-not-allowed" value="https://core-4c82.onrender.com" readonly>
-            <p class="text-xs text-green-500 mb-6 mt(-4)"><i class="fas fa-check-circle"></i> Enlazado a Render</p>
-            
+            <input type="text" id="tmdb-key-input" class="w-full bg-[#2b2b2b] text-white p-2 rounded mb-4 outline-none border border-gray-700 focus:border-red-600">
             <div class="flex justify-end space-x-3">
                 <button onclick="toggleSettings()" class="px-4 py-2 bg-gray-600 rounded hover:bg-gray-500 transition">Cancelar</button>
                 <button onclick="saveSettings()" class="px-4 py-2 bg-red-600 rounded hover:bg-red-700 transition">Guardar</button>
@@ -67,46 +59,45 @@
         </div>
     </div>
 
-    <!-- Player Modal -->
+    <!-- Modal de Reproducción -->
     <div id="player-modal" class="fixed inset-0 bg-black bg-opacity-95 hidden flex-col justify-center items-center z-50">
-        <button onclick="closePlayer()" class="absolute top-5 right-5 text-white text-3xl hover:text-red-600 transition z-50"><i class="fas fa-times"></i></button>
+        
+        <div class="absolute top-5 left-5 right-5 flex justify-between items-center z-50">
+            <div id="server-selector" class="hidden flex space-x-2 overflow-x-auto pb-2">
+                <span class="text-gray-400 text-sm my-auto mr-2 font-semibold">Servidores Alternativos:</span>
+                <button onclick="changeServer('superembed')" id="btn-superembed" class="server-btn px-3 py-1 bg-transparent border border-gray-600 text-gray-300 rounded text-sm hover:bg-gray-800 transition">SuperEmbed (Agregador)</button>
+                <button onclick="changeServer('autoembed')" id="btn-autoembed" class="server-btn px-3 py-1 bg-transparent border border-gray-600 text-gray-300 rounded text-sm hover:bg-gray-800 transition">AutoEmbed</button>
+                <button onclick="changeServer('vidsrcnet')" id="btn-vidsrcnet" class="server-btn px-3 py-1 bg-transparent border border-gray-600 text-gray-300 rounded text-sm hover:bg-gray-800 transition">VidSrc.net</button>
+            </div>
+            <button onclick="closePlayer()" class="text-white text-3xl hover:text-red-600 transition ml-auto"><i class="fas fa-times"></i></button>
+        </div>
+        
         <div class="loader" id="player-loader"></div>
-        <p id="player-status" class="text-gray-400 mt-4 hidden">Conectando con Render...</p>
-        <video id="video-player" class="w-full max-w-5xl rounded-lg shadow-2xl hidden bg-black" controls crossorigin playsinline></video>
+        <p id="player-status" class="text-gray-400 mt-4 hidden text-center px-4">Cargando reproductor...</p>
+        
+        <iframe id="movie-iframe" class="w-full max-w-5xl rounded-lg shadow-2xl hidden bg-black aspect-video mt-12" allowfullscreen></iframe>
     </div>
 
     <script>
-        // --- CONFIGURACIÓN PRINCIPAL ---
-        const BACKEND_URL = 'https://core-4c82.onrender.com';
-        
-        // Ya he incluido tu API Key por defecto
         let tmdbKey = localStorage.getItem('tmdbKey') || 'f6f6b797c560857281e0513011f50403';
+        let currentTmdbId = null;
 
-        // --- DOM Elements ---
         const moviesGrid = document.getElementById('movies-grid');
         const searchForm = document.getElementById('search-form');
         const searchInput = document.getElementById('search-input');
         const sectionTitle = document.getElementById('section-title');
         const mainLoader = document.getElementById('main-loader');
-        
         const settingsModal = document.getElementById('settings-modal');
         const tmdbKeyInput = document.getElementById('tmdb-key-input');
         
         const playerModal = document.getElementById('player-modal');
-        const videoPlayer = document.getElementById('video-player');
+        const movieIframe = document.getElementById('movie-iframe');
         const playerLoader = document.getElementById('player-loader');
         const playerStatus = document.getElementById('player-status');
+        const serverSelector = document.getElementById('server-selector');
 
-        let hls = null;
+        if (!tmdbKey) { toggleSettings(); } else { fetchPopularMovies(); }
 
-        // --- Inicialización ---
-        if (!tmdbKey) {
-            toggleSettings();
-        } else {
-            fetchPopularMovies();
-        }
-
-        // --- Lógica de Configuración ---
         function toggleSettings() {
             settingsModal.classList.toggle('hidden');
             settingsModal.classList.toggle('flex');
@@ -120,15 +111,12 @@
                 localStorage.setItem('tmdbKey', tmdbKey);
                 toggleSettings();
                 fetchPopularMovies();
-            } else {
-                alert('La API Key de TMDB es obligatoria para buscar películas.');
             }
         }
 
-        // --- Lógica de The Movie Database (TMDB) ---
         async function fetchPopularMovies() {
             if (!tmdbKey) return;
-            sectionTitle.innerText = "Películas Populares";
+            sectionTitle.innerText = "Películas Populares en Español";
             await fetchMovies(`https://api.themoviedb.org/3/trending/movie/week?api_key=${tmdbKey}&language=es-ES`);
         }
 
@@ -155,7 +143,7 @@
                         if (movie.poster_path) {
                             const card = document.createElement('div');
                             card.className = 'movie-card relative group rounded-lg overflow-hidden bg-[#222]';
-                            card.onclick = () => openPlayer(movie.id, movie.title);
+                            card.onclick = () => openPlayer(movie.id);
                             card.innerHTML = `
                                 <img src="https://image.tmdb.org/t/p/w500${movie.poster_path}" alt="${movie.title}" class="w-full h-auto object-cover">
                                 <div class="absolute inset-0 bg-black bg-opacity-80 opacity-0 group-hover:opacity-100 flex flex-col justify-end p-4 transition-opacity duration-300">
@@ -166,99 +154,55 @@
                             moviesGrid.appendChild(card);
                         }
                     });
-                } else {
-                    moviesGrid.innerHTML = '<p class="text-gray-400 col-span-full text-center py-10">No se encontraron resultados.</p>';
                 }
             } catch (error) {
                 console.error('Error TMDB:', error);
-                moviesGrid.innerHTML = '<p class="text-red-500 col-span-full text-center py-10">Error al conectar con TMDB. Verifica tu API Key o tu conexión a internet.</p>';
             } finally {
                 mainLoader.style.display = 'none';
             }
         }
 
-        // --- Lógica del Reproductor y Backend (CinePro Core) ---
-        async function openPlayer(tmdbId, title) {
+        function openPlayer(tmdbId) {
+            currentTmdbId = tmdbId;
             playerModal.classList.remove('hidden');
             playerModal.classList.add('flex');
-            videoPlayer.classList.add('hidden');
-            playerLoader.style.display = 'block';
-            playerStatus.style.display = 'block';
-            playerStatus.innerText = `Buscando fuentes de ${title} en Render... (esto puede tardar 10-20 segundos)`;
-
-            try {
-                // Primero intentamos la ruta de OMSS estándar
-                let response = await fetch(`${BACKEND_URL}/v1/movies/${tmdbId}`);
-                
-                // Si la ruta v1 falla, intentamos la ruta clásica por si acaso
-                if (response.status === 404) {
-                    console.log("Ruta /v1/movies/ no encontrada, probando /movie/ ...");
-                    response = await fetch(`${BACKEND_URL}/movie/${tmdbId}`);
-                }
-                
-                if (!response.ok) {
-                    throw new Error(`Error del servidor (${response.status}). Asegúrate de que el backend en Render esté activo.`);
-                }
-                
-                const data = await response.json();
-                console.log("Respuesta de CinePro:", data);
-                
-                let streamUrl = '';
-                
-                // Extraer el enlace dependiendo de cómo responda el backend
-                if (data.sources && data.sources.length > 0) streamUrl = data.sources[0].url;
-                else if (data.streams && data.streams.length > 0) streamUrl = data.streams[0].url;
-                else if (data.streamUrl) streamUrl = data.streamUrl;
-                else if (Array.isArray(data) && data.length > 0) streamUrl = data[0].url;
-                else if (data.url) streamUrl = data.url;
-
-                if (!streamUrl) {
-                    throw new Error('CinePro no encontró ningún enlace disponible para esta película.');
-                }
-
-                playerStatus.style.display = 'none';
-                playerLoader.style.display = 'none';
-                videoPlayer.classList.remove('hidden');
-
-                playVideo(streamUrl);
-
-            } catch (error) {
-                playerLoader.style.display = 'none';
-                playerStatus.innerText = 'Error: ' + error.message;
-                console.error("Backend Error:", error);
-            }
+            serverSelector.classList.remove('hidden');
+            
+            // Inicia cargando SuperEmbed
+            changeServer('superembed');
         }
 
-        function playVideo(url) {
-            if (hls) {
-                hls.destroy();
-            }
+        function changeServer(serverName) {
+            movieIframe.src = '';
+            document.querySelectorAll('.server-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`btn-${serverName}`).classList.add('active');
 
-            if (url.includes('.m3u8') && Hls.isSupported()) {
-                hls = new Hls();
-                hls.loadSource(url);
-                hls.attachMedia(videoPlayer);
-                hls.on(Hls.Events.MANIFEST_PARSED, function () {
-                    videoPlayer.play();
-                });
-            } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl') || url.includes('.mp4')) {
-                videoPlayer.src = url;
-                videoPlayer.play();
-            } else {
-                playerStatus.style.display = 'block';
-                playerStatus.innerText = "Formato de video no soportado por el navegador.";
-            }
+            movieIframe.classList.add('hidden');
+            playerLoader.style.display = 'block';
+            playerStatus.style.display = 'block';
+
+            setTimeout(() => {
+                playerLoader.style.display = 'none';
+                playerStatus.style.display = 'none';
+                movieIframe.classList.remove('hidden');
+
+                if (serverName === 'superembed') {
+                    // SuperEmbed agrupa múltiples fuentes que suelen incluir servidores latinos
+                    movieIframe.src = `https://superembed.stream/embed.php?tmdb=${currentTmdbId}`;
+                } else if (serverName === 'autoembed') {
+                    movieIframe.src = `https://autoembed.cc/embed/movie/tmdb/${currentTmdbId}`;
+                } else if (serverName === 'vidsrcnet') {
+                    movieIframe.src = `https://vidsrc.net/embed/movie/${currentTmdbId}`;
+                }
+            }, 300);
         }
 
         function closePlayer() {
             playerModal.classList.add('hidden');
             playerModal.classList.remove('flex');
-            if (hls) {
-                hls.destroy();
-                hls = null;
-            }
-            videoPlayer.pause();
-            videoPlayer.src = '';
+            serverSelector.classList.add('hidden');
+            movieIframe.src = "";
+            currentTmdbId = null;
         }
     </script>
 </body>
