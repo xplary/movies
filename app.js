@@ -69,26 +69,32 @@ function setupEventListeners() {
   });
 }
 
+// Petición robusta con Timeout (evita cuelgues en datos móviles lentos)
 async function apiFetch(endpoint) {
+  const url = endpoint === "/health" ? `${RENDER_URL}/health` : `${API_BASE}${endpoint}`;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 segundos máx por petición
+
   try {
-    const url = endpoint === "/health" ? `${RENDER_URL}/health` : `${API_BASE}${endpoint}`;
-    const response = await fetch(url);
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
     const json = await response.json();
     if (!response.ok || !json.success) throw new Error("API Error");
     return json.data;
   } catch (err) {
+    clearTimeout(timeoutId);
     console.error(err);
     throw err;
   }
 }
 
-/* SISTEMA INTELIGENTE DE CONEXIÓN CON REINTENTOS (Evita falso "Offline" por Cold Start) */
+// SISTEMA DE REINTENTOS AMPLIADO (Hasta 10 intentos = ~40 segundos para cubrir el Cold Start de Render en móviles)
 async function checkBackendStatus() {
   const badge = document.getElementById("status-badge");
   badge.className = "api-status-badge loading";
   badge.querySelector(".status-text").textContent = "Conectando...";
 
-  let attempts = 4; // Intentar hasta 4 veces
+  let attempts = 10; 
   while (attempts > 0) {
     try {
       const data = await apiFetch("/health");
@@ -103,7 +109,6 @@ async function checkBackendStatus() {
         badge.className = "api-status-badge offline";
         badge.querySelector(".status-text").textContent = "Offline";
       } else {
-        // Esperar 4 segundos entre intentos para dar tiempo a que Render despierte
         await new Promise(resolve => setTimeout(resolve, 4000));
       }
     }
@@ -138,7 +143,7 @@ function renderCarousel(container, items, type) {
     
     card.innerHTML = `
       <div class="poster-wrapper">
-        <img src="${poster}" class="poster-img" loading="lazy" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1485846234645-a62644f84728?q=80&w=400';">
+        <img src="${poster}" class="poster-img" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1485846234645-a62644f84728?q=80&w=400';">
         <div class="poster-overlay"><ion-icon name="play-circle-sharp"></ion-icon></div>
         ${item.rating ? `<span class="rating-badge"><ion-icon name="star"></ion-icon>${item.rating}</span>` : ''}
       </div>
