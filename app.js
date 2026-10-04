@@ -268,11 +268,26 @@ function autoPlayBestServer(servers) {
     return;
   }
 
+  // ORDEN INTELIGENTE MODIFICADO:
+  // 1. Prioriza servidores limpios sin tanta publicidad (como 'vidhide' o 'filelions').
+  // 2. Prioriza idioma Español Latino.
   servers.sort((a, b) => {
+    const nameA = (a.name || '').toLowerCase();
+    const nameB = (b.name || '').toLowerCase();
+    
+    // Puedes añadir más nombres de servidores limpios aquí si lo deseas separándolos con ||
+    const aClean = nameA.includes('vidhide') || nameA.includes('filelions');
+    const bClean = nameB.includes('vidhide') || nameB.includes('filelions');
+    
+    if (aClean && !bClean) return -1;
+    if (!aClean && bClean) return 1;
+
+    // Segundo criterio: Idioma Latino
     const aLat = (a.language || '').toLowerCase().includes('latino');
     const bLat = (b.language || '').toLowerCase().includes('latino');
     if (aLat && !bLat) return -1;
     if (!aLat && bLat) return 1;
+
     return 0;
   });
 
@@ -289,6 +304,7 @@ function autoPlayBestServer(servers) {
     theaterIframe.src = serverSelector.value;
   };
 
+  // Reproduce automáticamente el primero de la lista (que ahora será el más limpio / latino)
   serverSelector.value = servers[0].embedUrl || servers[0].url || servers[0].link;
   theaterIframe.src = serverSelector.value;
   
