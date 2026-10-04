@@ -44,7 +44,7 @@
     </div>
   </nav>
 
-  <!-- AVISO NO INVASIVO DE UBLOCK ORIGIN (Se oculta tras cerrarlo por primera vez) -->
+  <!-- AVISO DE UBLOCK ORIGIN -->
   <div class="adblock-notice" id="adblock-notice">
     <div class="notice-content">
       <ion-icon name="shield-checkmark-outline"></ion-icon>
@@ -72,9 +72,24 @@
     </section>
 
     <section class="view-container carousel-section" id="carousel-section-container">
-      <div class="carousel-row"><h2>Películas Destacadas</h2><div class="carousel-container" id="carousel-movies"></div></div>
-      <div class="carousel-row"><h2>Series del Momento</h2><div class="carousel-container" id="carousel-series"></div></div>
-      <div class="carousel-row"><h2>Anime Recomendado</h2><div class="carousel-container" id="carousel-anime"></div></div>
+      <!-- Fila Dinámica: Seguir Viendo (Se oculta si no hay caché) -->
+      <div class="carousel-row hidden" id="continue-row">
+        <h2>Seguir Viendo</h2>
+        <div class="carousel-container" id="carousel-continue"></div>
+      </div>
+
+      <div class="carousel-row">
+        <h2>Películas Recientes</h2>
+        <div class="carousel-container" id="carousel-movies"></div>
+      </div>
+      <div class="carousel-row">
+        <h2>Series del Momento</h2>
+        <div class="carousel-container" id="carousel-series"></div>
+      </div>
+      <div class="carousel-row">
+        <h2>Anime Recomendado</h2>
+        <div class="carousel-container" id="carousel-anime"></div>
+      </div>
     </section>
   </main>
 
@@ -93,7 +108,6 @@
   <!-- THEATER MODAL (Modo Cine Automático) -->
   <div id="theater-modal" class="hidden">
     <div class="theater-content">
-      <!-- Barra superior sutil -->
       <div class="theater-topbar">
         <div class="theater-info">
           <h3 id="theater-title">Cargando reproductor...</h3>
