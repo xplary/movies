@@ -301,45 +301,21 @@ function autoPlayBestServer(servers) {
 // Lógica principal: Resolver el Iframe a MP4/M3U8 y reproducirlo nativamente
 async function attemptDirectPlay(iframeUrl) {
   theaterLoader.classList.remove("hidden");
-  loaderText.textContent = "Desencriptando video en alta calidad...";
+  loaderText.textContent = "Cargando servidor...";
+  
+  // Ocultar reproductor nativo y mostrar el contenedor de iframe optimizado
   videoContainer.classList.add("hidden");
-  iframeContainer.classList.add("hidden");
+  iframeContainer.classList.remove("hidden");
 
-  // Destruir instancia anterior
+  // Limpiar instancias previas si las hubiera
   if (customPlayer) { customPlayer.destroy(); customPlayer = null; }
   if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
   theaterVideo.src = "";
-  theaterIframe.src = "";
 
-  try {
-    // Llama a la API de Render para extraer el video crudo
-    const resolved = await apiFetch(`/api/v1/content/resolve?url=${encodeURIComponent(iframeUrl)}`);
-    const rawUrl = resolved.url || resolved.source || resolved.stream;
-
-    if (!rawUrl) throw new Error("No se pudo extraer enlace directo");
-
-    // Éxito: Inicializar reproductor propio
-    theaterLoader.classList.add("hidden");
-    videoContainer.classList.remove("hidden");
-
-    if (Hls.isSupported() && rawUrl.includes('.m3u8')) {
-      hlsInstance = new Hls();
-      hlsInstance.loadSource(rawUrl);
-      hlsInstance.attachMedia(theaterVideo);
-      hlsInstance.on(Hls.Events.MANIFEST_PARSED, function() {
-        customPlayer = new Plyr(theaterVideo, { autoplay: true });
-        customPlayer.play();
-      });
-    } else {
-      theaterVideo.src = rawUrl;
-      customPlayer = new Plyr(theaterVideo, { autoplay: true });
-      customPlayer.play();
-    }
-  } catch (err) {
-    console.warn("Fallo el extractor nativo, usando Iframe de respaldo", err);
-    // Fallback: Si el extractor falla (ej. servidor muy nuevo), carga el iframe tradicional
-    theaterLoader.classList.add("hidden");
-    iframeContainer.classList.remove("hidden");
-    theaterIframe.src = iframeUrl;
-  }
+  // Inyectar el enlace del servidor seleccionado (Streamwish, VOE, etc.)
+  theaterIframe.src = iframeUrl;
+  
+  // Ocultar el cargador al instante
+  theaterLoader.classList.add("hidden");
+}
 }
