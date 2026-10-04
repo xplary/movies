@@ -1,11 +1,15 @@
 const RENDER_URL = "https://peliapi-8q6q.onrender.com";
 const API_BASE = `${RENDER_URL}/api/v1/content`;
 
-const state = { activeType: "movie", results: [], selectedMedia: null, heroItems: [], heroIndex: 0, heroInterval: null };
-let customPlayer = null; // Instancia global del reproductor
-let hlsInstance = null; // Instancia global de HLS
+const state = {
+  activeType: "movie",
+  results: [],
+  selectedMedia: null,
+  heroItems: [],
+  heroIndex: 0,
+  heroInterval: null
+};
 
-// DOM Elements
 const searchForm = document.getElementById("search-form");
 const searchInput = document.getElementById("search-input");
 const filterTabs = document.querySelectorAll(".filter-tab");
@@ -16,23 +20,17 @@ const gridView = document.getElementById("grid-view");
 const theaterModal = document.getElementById("theater-modal");
 const theaterTitle = document.getElementById("theater-title");
 const theaterLoader = document.getElementById("theater-loader");
-const loaderText = document.getElementById("loader-text");
+const theaterIframe = document.getElementById("theater-iframe");
 const serverSelector = document.getElementById("server-selector");
 const seasonSelector = document.getElementById("season-selector");
 const episodeSelector = document.getElementById("episode-selector");
-const videoContainer = document.getElementById("video-container");
-const iframeContainer = document.getElementById("iframe-container");
-const theaterVideo = document.getElementById("theater-video");
-const theaterIframe = document.getElementById("theater-iframe");
 
-// Init
 document.addEventListener("DOMContentLoaded", () => {
   setupEventListeners();
   checkBackendStatus();
   loadHomepage();
 });
 
-// Navegación Básica
 function showHomeView() {
   homeView.classList.remove("hidden");
   gridView.classList.add("hidden");
@@ -47,18 +45,13 @@ function showGridView(titleText) {
   document.getElementById("results-title").textContent = titleText;
 }
 
-// Eventos
 function setupEventListeners() {
   document.getElementById("nav-link-home").addEventListener("click", showHomeView);
   document.getElementById("brand-logo").addEventListener("click", showHomeView);
   
-  // Cerrar Modo Cine y destruir reproductor
   document.getElementById("btn-close-theater").addEventListener("click", () => {
     theaterModal.classList.add("hidden");
-    if (customPlayer) { customPlayer.destroy(); customPlayer = null; }
-    if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
     theaterIframe.src = "";
-    theaterVideo.src = "";
   });
 
   searchForm.addEventListener("submit", (e) => {
@@ -78,13 +71,11 @@ function setupEventListeners() {
 
 async function apiFetch(endpoint) {
   try {
-    const url = endpoint.startsWith("/resolve") || endpoint.startsWith("/health") 
-                ? `${RENDER_URL}${endpoint}` 
-                : `${API_BASE}${endpoint}`;
+    const url = endpoint === "/health" ? `${RENDER_URL}/health` : `${API_BASE}${endpoint}`;
     const response = await fetch(url);
     const json = await response.json();
     if (!response.ok || !json.success) throw new Error("API Error");
-    return json.data || json; // Resolve API a veces devuelve directo el objeto
+    return json.data;
   } catch (err) {
     console.error(err);
     throw err;
@@ -119,7 +110,9 @@ async function loadHomepage() {
     
     const allHeroCandidates = [...(moviesData?.items||[]), ...(seriesData?.items||[])].filter(i => parseFloat(i.rating) >= 7.5);
     setupHeroRotation(allHeroCandidates);
-  } catch (err) { console.error(err); }
+  } catch (err) {
+    console.error("Error home:", err);
+  }
 }
 
 function renderCarousel(container, items, type) {
@@ -151,7 +144,9 @@ async function performSearch(query) {
     const items = await apiFetch(`/search?s=${encodeURIComponent(query)}`);
     document.getElementById("results-loading").classList.add("hidden");
     renderCarousel(resultsGrid, items || [], "search");
-  } catch (err) { console.error(err); }
+  } catch (err) {
+    console.error(err);
+  }
 }
 
 async function loadFilteredCatalog(type) {
@@ -161,7 +156,9 @@ async function loadFilteredCatalog(type) {
     const data = await apiFetch(`/catalog?type=${type}&page=1`);
     document.getElementById("results-loading").classList.add("hidden");
     renderCarousel(resultsGrid, data.items || [], type);
-  } catch (err) { console.error(err); }
+  } catch (err) {
+    console.error(err);
+  }
 }
 
 function setupHeroRotation(items) {
@@ -184,25 +181,20 @@ async function setupHeroBanner(item) {
   document.getElementById("hero-play-btn").onclick = () => openTheaterMode(item);
 }
 
-// ==========================================
-// MODO CINE & REPRODUCTOR NATIVO
-// ==========================================
-
 async function openTheaterMode(item) {
   theaterModal.classList.remove("hidden");
   theaterLoader.classList.remove("hidden");
-  loaderText.textContent = "Buscando capítulos...";
-  
-  videoContainer.classList.add("hidden");
-  iframeContainer.classList.add("hidden");
+  theaterIframe.src = "";
   serverSelector.innerHTML = "";
   seasonSelector.innerHTML = "";
   episodeSelector.innerHTML = "";
+  
   serverSelector.classList.add("hidden");
   seasonSelector.classList.add("hidden");
   episodeSelector.classList.add("hidden");
 
-  theaterTitle.textContent = item.title.replace("VER ", "").replace(" Online Gratis HD", "");
+  const cleanTitle = item.title.replace("VER ", "").replace(" Online Gratis HD", "");
+  theaterTitle.textContent = cleanTitle;
 
   try {
     const fullInfo = await apiFetch(`/info/${item.slug}?type=${item.type}&provider=${item.provider || 'pelisplus'}`);
@@ -244,10 +236,12 @@ async function openTheaterMode(item) {
       }
 
       episodeSelector.onchange = () => loadEpisodeServers(seasonSelector.value, episodeSelector.value);
+
       seasonSelector.value = seasons[0].number;
       populateEpisodes(seasons[0].episodes);
     }
   } catch (err) {
+    console.error("Error al cargar Modo Cine:", err);
     theaterTitle.textContent = "Error al conectar con el servidor.";
     theaterLoader.classList.add("hidden");
   }
@@ -256,13 +250,13 @@ async function openTheaterMode(item) {
 async function loadEpisodeServers(season, episode) {
   theaterLoader.classList.remove("hidden");
   serverSelector.classList.add("hidden");
-  videoContainer.classList.add("hidden");
-  iframeContainer.classList.add("hidden");
+  theaterIframe.src = "";
   
   try {
     const data = await apiFetch(`/servers?slug=${state.selectedMedia.slug}&season=${season}&episode=${episode}&provider=${state.selectedMedia.provider || 'pelisplus'}`);
     autoPlayBestServer(data.servers || []);
   } catch (err) {
+    console.error(err);
     theaterLoader.classList.add("hidden");
   }
 }
@@ -291,31 +285,12 @@ function autoPlayBestServer(servers) {
   });
 
   serverSelector.classList.remove("hidden");
-  serverSelector.onchange = () => attemptDirectPlay(serverSelector.value);
-  
-  // Autoplay del primer servidor
+  serverSelector.onchange = () => {
+    theaterIframe.src = serverSelector.value;
+  };
+
   serverSelector.value = servers[0].embedUrl || servers[0].url || servers[0].link;
-  attemptDirectPlay(serverSelector.value);
-}
-
-// Lógica principal: Resolver el Iframe a MP4/M3U8 y reproducirlo nativamente
-async function attemptDirectPlay(iframeUrl) {
-  theaterLoader.classList.remove("hidden");
-  loaderText.textContent = "Cargando servidor...";
+  theaterIframe.src = serverSelector.value;
   
-  // Ocultar reproductor nativo y mostrar el contenedor de iframe optimizado
-  videoContainer.classList.add("hidden");
-  iframeContainer.classList.remove("hidden");
-
-  // Limpiar instancias previas si las hubiera
-  if (customPlayer) { customPlayer.destroy(); customPlayer = null; }
-  if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
-  theaterVideo.src = "";
-
-  // Inyectar el enlace del servidor seleccionado (Streamwish, VOE, etc.)
-  theaterIframe.src = iframeUrl;
-  
-  // Ocultar el cargador al instante
   theaterLoader.classList.add("hidden");
-}
 }
