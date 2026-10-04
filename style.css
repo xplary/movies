@@ -34,6 +34,55 @@ body.theater-open {
 .search-box-wrapper:focus-within { border-color: #ec4899; background: rgba(18, 16, 25, 0.9); }
 .search-box-wrapper input { background: transparent; border: none; color: white; outline: none; margin-left: 10px; font-size: 14px; width: 200px; }
 
+/* Aviso flotante de uBlock Origin */
+.adblock-notice {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 650px;
+  background: rgba(18, 16, 25, 0.92);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(236, 72, 153, 0.25);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.7), 0 0 15px rgba(236, 72, 153, 0.15);
+  padding: 8px 18px;
+  border-radius: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 45;
+  animation: fadeInNotice 0.5s ease;
+}
+.notice-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: #e5e7eb;
+}
+.notice-content ion-icon {
+  font-size: 20px;
+  color: #ec4899;
+  flex-shrink: 0;
+}
+.close-notice {
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0 4px;
+  transition: color 0.2s;
+}
+.close-notice:hover {
+  color: white;
+}
+@keyframes fadeInNotice {
+  from { opacity: 0; transform: translate(-50%, -12px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
 /* Hero Banner */
 .hero-banner { height: 75vh; background-size: cover; background-position: center center; background-repeat: no-repeat; display: flex; align-items: flex-end; position: relative; }
 .hero-banner::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, var(--bg-color) 0%, rgba(7,6,10,0.4) 50%, transparent 100%); }
@@ -66,7 +115,7 @@ body.theater-open {
 
 .hidden { display: none !important; }
 
-/* MODO CINE (THEATER MODAL - Forzado a GPU) */
+/* MODO CINE (THEATER MODAL) */
 #theater-modal { 
   position: fixed; inset: 0; z-index: 9999; background: #000; 
   display: flex; flex-direction: column; 
@@ -132,6 +181,14 @@ body.theater-open {
   .nav-right { width: 100%; }
   .search-box-wrapper { width: 100%; padding: 5px 12px; }
   .search-box-wrapper input { width: 100%; }
+
+  .adblock-notice {
+    top: 115px;
+    width: 92%;
+    padding: 6px 12px;
+    font-size: 11px;
+  }
+  .notice-content { font-size: 11px; }
 
   .hero-banner { height: 60vh; margin-top: 105px; }
   .hero-content { padding: 20px; }
