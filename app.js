@@ -82,17 +82,31 @@ async function apiFetch(endpoint) {
   }
 }
 
+/* SISTEMA INTELIGENTE DE CONEXIÓN CON REINTENTOS (Evita falso "Offline" por Cold Start) */
 async function checkBackendStatus() {
   const badge = document.getElementById("status-badge");
-  try {
-    const data = await apiFetch("/health");
-    if (data && data.status === "ok") {
-      badge.className = "api-status-badge online";
-      badge.querySelector(".status-text").textContent = "Online";
+  badge.className = "api-status-badge loading";
+  badge.querySelector(".status-text").textContent = "Conectando...";
+
+  let attempts = 4; // Intentar hasta 4 veces
+  while (attempts > 0) {
+    try {
+      const data = await apiFetch("/health");
+      if (data && (data.status === "ok" || data.ok)) {
+        badge.className = "api-status-badge online";
+        badge.querySelector(".status-text").textContent = "Online";
+        return;
+      }
+    } catch (err) {
+      attempts--;
+      if (attempts === 0) {
+        badge.className = "api-status-badge offline";
+        badge.querySelector(".status-text").textContent = "Offline";
+      } else {
+        // Esperar 4 segundos entre intentos para dar tiempo a que Render despierte
+        await new Promise(resolve => setTimeout(resolve, 4000));
+      }
     }
-  } catch (err) {
-    badge.className = "api-status-badge offline";
-    badge.querySelector(".status-text").textContent = "Offline";
   }
 }
 
@@ -120,15 +134,16 @@ function renderCarousel(container, items, type) {
   items.forEach(item => {
     const card = document.createElement("div");
     card.className = "media-card";
-    const poster = item.poster || "https://via.placeholder.com/200x300";
+    const poster = item.poster || "https://images.unsplash.com/photo-1485846234645-a62644f84728?q=80&w=400";
+    
     card.innerHTML = `
       <div class="poster-wrapper">
-        <img src="${poster}" class="poster-img" loading="lazy">
+        <img src="${poster}" class="poster-img" loading="lazy" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1485846234645-a62644f84728?q=80&w=400';">
         <div class="poster-overlay"><ion-icon name="play-circle-sharp"></ion-icon></div>
         ${item.rating ? `<span class="rating-badge"><ion-icon name="star"></ion-icon>${item.rating}</span>` : ''}
       </div>
       <div class="media-info">
-        <h3>${item.title.replace("VER ", "").replace(" Online Gratis HD", "")}</h3>
+        <h3>${(item.title || '').replace("VER ", "").replace(" Online Gratis HD", "")}</h3>
       </div>
     `;
     card.onclick = () => openTheaterMode(item);
@@ -146,6 +161,7 @@ async function performSearch(query) {
     renderCarousel(resultsGrid, items || [], "search");
   } catch (err) {
     console.error(err);
+    document.getElementById("results-loading").classList.add("hidden");
   }
 }
 
@@ -158,6 +174,7 @@ async function loadFilteredCatalog(type) {
     renderCarousel(resultsGrid, data.items || [], type);
   } catch (err) {
     console.error(err);
+    document.getElementById("results-loading").classList.add("hidden");
   }
 }
 
@@ -174,7 +191,7 @@ function setupHeroRotation(items) {
 
 async function setupHeroBanner(item) {
   const banner = document.getElementById("hero-banner");
-  banner.style.backgroundImage = `url('${item.poster}')`;
+  banner.style.backgroundImage = `url('${item.poster || 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=1600'}')`;
   document.getElementById("hero-title").textContent = item.title;
   document.getElementById("hero-rating").textContent = item.rating || "N/A";
   document.getElementById("hero-synopsis").textContent = "Haz clic en reproducir para disfrutar de esta sugerencia...";
@@ -193,7 +210,7 @@ async function openTheaterMode(item) {
   seasonSelector.classList.add("hidden");
   episodeSelector.classList.add("hidden");
 
-  const cleanTitle = item.title.replace("VER ", "").replace(" Online Gratis HD", "");
+  const cleanTitle = (item.title || '').replace("VER ", "").replace(" Online Gratis HD", "");
   theaterTitle.textContent = cleanTitle;
 
   try {
@@ -268,21 +285,16 @@ function autoPlayBestServer(servers) {
     return;
   }
 
-  // ORDEN INTELIGENTE MODIFICADO:
-  // 1. Prioriza servidores limpios sin tanta publicidad (como 'vidhide' o 'filelions').
-  // 2. Prioriza idioma Español Latino.
   servers.sort((a, b) => {
     const nameA = (a.name || '').toLowerCase();
     const nameB = (b.name || '').toLowerCase();
     
-    // Puedes añadir más nombres de servidores limpios aquí si lo deseas separándolos con ||
     const aClean = nameA.includes('vidhide') || nameA.includes('filelions');
     const bClean = nameB.includes('vidhide') || nameB.includes('filelions');
     
     if (aClean && !bClean) return -1;
     if (!aClean && bClean) return 1;
 
-    // Segundo criterio: Idioma Latino
     const aLat = (a.language || '').toLowerCase().includes('latino');
     const bLat = (b.language || '').toLowerCase().includes('latino');
     if (aLat && !bLat) return -1;
@@ -304,7 +316,6 @@ function autoPlayBestServer(servers) {
     theaterIframe.src = serverSelector.value;
   };
 
-  // Reproduce automáticamente el primero de la lista (que ahora será el más limpio / latino)
   serverSelector.value = servers[0].embedUrl || servers[0].url || servers[0].link;
   theaterIframe.src = serverSelector.value;
   
