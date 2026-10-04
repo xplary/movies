@@ -84,13 +84,16 @@
   <!-- THEATER MODAL (Modo Cine Automático) -->
   <div id="theater-modal" class="hidden">
     <div class="theater-content">
-      <!-- Barra superior sutil (aparece al hacer hover) -->
+      <!-- Barra superior sutil -->
       <div class="theater-topbar">
         <div class="theater-info">
           <h3 id="theater-title">Cargando reproductor...</h3>
           <select id="season-selector" class="subtle-select hidden" title="Temporada"></select>
           <select id="episode-selector" class="subtle-select hidden" title="Capítulo"></select>
           <select id="server-selector" class="subtle-select hidden" title="Servidor de Video"></select>
+          <button id="btn-next-server" class="btn-play-fallback hidden" title="Si el video no carga, haz clic aquí para cambiar de servidor">
+            <ion-icon name="play-circle-outline"></ion-icon> Reproducir / Cambiar Opción
+          </button>
         </div>
         <button class="btn-close-theater" id="btn-close-theater" title="Cerrar reproductor">
           <ion-icon name="close-outline"></ion-icon>
@@ -103,7 +106,8 @@
       </div>
 
       <div class="iframe-container">
-        <iframe id="theater-iframe" src="" allowfullscreen></iframe>
+        <!-- SANDBOX AGREGADO: Bloquea apertura de páginas de publicidad externas -->
+        <iframe id="theater-iframe" src="" sandbox="allow-scripts allow-same-origin allow-forms" allowfullscreen></iframe>
       </div>
     </div>
   </div>
