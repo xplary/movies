@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Cine Vercel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { background-color: #141414; color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .movie-card { transition: transform 0.3s ease; }
+        .movie-card:hover { transform: scale(1.05); cursor: pointer; }
+        .loader { 
+            border: 4px solid rgba(255, 255, 255, 0.1); 
+            border-left-color: #e50914; 
+            border-radius: 50%; 
+            width: 40px; 
+            height: 40px; 
+            animation: spin 1s linear infinite; 
+            display: none; 
+            margin: 20px auto; 
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #player-modal { backdrop-filter: blur(5px); }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Navbar -->
+    <nav class="flex items-center justify-between p-5 bg-[#0b0b0b] shadow-lg sticky top-0 z-50">
+        <div class="text-2xl font-bold text-red-600"><i class="fas fa-play-circle mr-2"></i>CineWeb</div>
+        <div class="flex items-center space-x-4">
+            <form id="search-form" class="relative">
+                <input type="text" id="search-input" placeholder="Buscar película..." class="bg-[#2b2b2b] text-white px-4 py-2 rounded-full outline-none focus:ring-2 focus:ring-red-600">
+                <button type="submit" class="absolute right-3 top-2.5 text-gray-400 hover:text-white"><i class="fas fa-search"></i></button>
+            </form>
+            <button onclick="toggleSettings()" class="text-gray-400 hover:text-white text-xl" title="Configuración"><i class="fas fa-cog"></i></button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-grow p-8">
+        <h2 id="section-title" class="text-2xl mb-6 font-semibold border-l-4 border-red-600 pl-3">Películas Populares</h2>
+        <div class="loader" id="main-loader"></div>
+        <div id="movies-grid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+            <!-- Movies injected here -->
+        </div>
+    </main>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="fixed inset-0 bg-black bg-opacity-80 hidden flex justify-center items-center z-50">
+        <div class="bg-[#1e1e1e] p-8 rounded-lg w-full max-w-md shadow-2xl">
+            <h3 class="text-xl font-bold mb-4">Configuración del Sistema</h3>
+            
+            <label class="block text-sm text-gray-400 mb-2">TMDB API Key (Requerido)</label>
+            <input type="password" id="tmdb-key-input" class="w-full bg-[#2b2b2b] text-white p-2 rounded mb-4 outline-none border border-gray-700 focus:border-red-600" placeholder="Pega tu API Key de TMDB">
+            
+            <label class="block text-sm text-gray-400 mb-2">URL del Backend (CinePro en Vercel)</label>
+            <input type="text" id="backend-url-input" class="w-full bg-[#2b2b2b] text-gray-400 p-2 rounded mb-6 outline-none border border-gray-700 cursor-not-allowed" value="https://core-beryl-pi.vercel.app" readonly>
+            <p class="text-xs text-green-500 mb-6 mt(-4)"><i class="fas fa-check-circle"></i> Enlazado correctamente a Vercel</p>
+            
+            <div class="flex justify-end space-x-3">
+                <button onclick="toggleSettings()" class="px-4 py-2 bg-gray-600 rounded hover:bg-gray-500 transition">Cancelar</button>
+                <button onclick="saveSettings()" class="px-4 py-2 bg-red-600 rounded hover:bg-red-700 transition">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Player Modal -->
+    <div id="player-modal" class="fixed inset-0 bg-black bg-opacity-95 hidden flex-col justify-center items-center z-50">
+        <button onclick="closePlayer()" class="absolute top-5 right-5 text-white text-3xl hover:text-red-600 transition"><i class="fas fa-times"></i></button>
+        <div class="loader" id="player-loader"></div>
+        <p id="player-status" class="text-gray-400 mt-4 hidden">Extrayendo enlaces de video desde Vercel...</p>
+        <video id="video-player" class="w-full max-w-5xl rounded-lg shadow-2xl hidden bg-black" controls crossorigin playsinline></video>
+    </div>
+
+    <script>
+        // --- CONFIGURACIÓN PRINCIPAL ---
+        const BACKEND_URL = 'https://core-beryl-pi.vercel.app';
+        let tmdbKey = localStorage.getItem('tmdbKey') || '';
+
+        // --- DOM Elements ---
+        const moviesGrid = document.getElementById('movies-grid');
+        const searchForm = document.getElementById('search-form');
+        const searchInput = document.getElementById('search-input');
+        const sectionTitle = document.getElementById('section-title');
+        const mainLoader = document.getElementById('main-loader');
+        
+        const settingsModal = document.getElementById('settings-modal');
+        const tmdbKeyInput = document.getElementById('tmdb-key-input');
+        
+        const playerModal = document.getElementById('player-modal');
+        const videoPlayer = document.getElementById('video-player');
+        const playerLoader = document.getElementById('player-loader');
+        const playerStatus = document.getElementById('player-status');
+
+        let hls = null;
+
+        // --- Inicialización ---
+        if (!tmdbKey) {
+            toggleSettings();
+        } else {
+            fetchPopularMovies();
+        }
+
+        // --- Lógica de Configuración ---
+        function toggleSettings() {
+            settingsModal.classList.toggle('hidden');
+            settingsModal.classList.toggle('flex');
+            tmdbKeyInput.value = tmdbKey;
+        }
+
+        function saveSettings() {
+            const key = tmdbKeyInput.value.trim();
+            if (key) {
+                tmdbKey = key;
+                localStorage.setItem('tmdbKey', tmdbKey);
+                toggleSettings();
+                fetchPopularMovies();
+            } else {
+                alert('La API Key de TMDB es obligatoria para buscar películas.');
+            }
+        }
+
+        // --- Lógica de The Movie Database (TMDB) ---
+        async function fetchPopularMovies() {
+            if (!tmdbKey) return;
+            sectionTitle.innerText = "Películas Populares";
+            await fetchMovies(`https://api.themoviedb.org/3/trending/movie/week?api_key=${tmdbKey}&language=es-ES`);
+        }
+
+        searchForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const query = searchInput.value.trim();
+            if (query) {
+                sectionTitle.innerText = `Resultados para: "${query}"`;
+                await fetchMovies(`https://api.themoviedb.org/3/search/movie?api_key=${tmdbKey}&query=${encodeURIComponent(query)}&language=es-ES`);
+            } else {
+                fetchPopularMovies();
+            }
+        });
+
+        async function fetchMovies(url) {
+            moviesGrid.innerHTML = '';
+            mainLoader.style.display = 'block';
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.results && data.results.length > 0) {
+                    data.results.forEach(movie => {
+                        if (movie.poster_path) {
+                            const card = document.createElement('div');
+                            card.className = 'movie-card relative group rounded-lg overflow-hidden bg-[#222]';
+                            card.onclick = () => openPlayer(movie.id, movie.title);
+                            card.innerHTML = `
+                                <img src="https://image.tmdb.org/t/p/w500${movie.poster_path}" alt="${movie.title}" class="w-full h-auto object-cover">
+                                <div class="absolute inset-0 bg-black bg-opacity-80 opacity-0 group-hover:opacity-100 flex flex-col justify-end p-4 transition-opacity duration-300">
+                                    <h4 class="font-bold text-sm mb-1 text-white">${movie.title}</h4>
+                                    <div class="text-xs text-yellow-400"><i class="fas fa-star"></i> ${movie.vote_average.toFixed(1)}</div>
+                                </div>
+                            `;
+                            moviesGrid.appendChild(card);
+                        }
+                    });
+                } else {
+                    moviesGrid.innerHTML = '<p class="text-gray-400 col-span-full text-center py-10">No se encontraron resultados.</p>';
+                }
+            } catch (error) {
+                console.error('Error TMDB:', error);
+                moviesGrid.innerHTML = '<p class="text-red-500 col-span-full text-center py-10">Error al conectar con TMDB. Verifica tu API Key o tu conexión a internet.</p>';
+            } finally {
+                mainLoader.style.display = 'none';
+            }
+        }
+
+        // --- Lógica del Reproductor y Backend (CinePro Core) ---
+        async function openPlayer(tmdbId, title) {
+            playerModal.classList.remove('hidden');
+            playerModal.classList.add('flex');
+            videoPlayer.classList.add('hidden');
+            playerLoader.style.display = 'block';
+            playerStatus.style.display = 'block';
+            playerStatus.innerText = `Extrayendo enlaces de ${title} desde Vercel...`;
+
+            try {
+                // Petición a tu Backend alojado en Vercel
+                const response = await fetch(`${BACKEND_URL}/movie/${tmdbId}`);
+                
+                if (!response.ok) throw new Error('Tu backend en Vercel no respondió correctamente.');
+                
+                const data = await response.json();
+                
+                // Mapeo dinámico dependiendo de cómo CinePro emita el JSON
+                let streamUrl = '';
+                if (data.streamUrl) streamUrl = data.streamUrl;
+                else if (data.streams && data.streams.length > 0) streamUrl = data.streams[0].url;
+                else if (Array.isArray(data) && data.length > 0) streamUrl = data[0].url;
+                else if (data.url) streamUrl = data.url;
+
+                if (!streamUrl) {
+                    throw new Error('No se encontraron streams disponibles para esta película.');
+                }
+
+                playerStatus.style.display = 'none';
+                playerLoader.style.display = 'none';
+                videoPlayer.classList.remove('hidden');
+
+                playVideo(streamUrl);
+
+            } catch (error) {
+                playerLoader.style.display = 'none';
+                playerStatus.innerText = 'Error: ' + error.message;
+                console.error("Backend Error:", error);
+            }
+        }
+
+        function playVideo(url) {
+            if (hls) {
+                hls.destroy();
+            }
+
+            if (url.includes('.m3u8') && Hls.isSupported()) {
+                hls = new Hls();
+                hls.loadSource(url);
+                hls.attachMedia(videoPlayer);
+                hls.on(Hls.Events.MANIFEST_PARSED, function () {
+                    videoPlayer.play();
+                });
+            } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl') || url.includes('.mp4')) {
+                // Soporte nativo (Safari) o archivos MP4 directos
+                videoPlayer.src = url;
+                videoPlayer.play();
+            } else {
+                playerStatus.style.display = 'block';
+                playerStatus.innerText = "Formato de video no soportado por el navegador.";
+            }
+        }
+
+        function closePlayer() {
+            playerModal.classList.add('hidden');
+            playerModal.classList.remove('flex');
+            if (hls) {
+                hls.destroy();
+                hls = null;
+            }
+            videoPlayer.pause();
+            videoPlayer.src = '';
+        }
+    </script>
+</body>
+</html>
