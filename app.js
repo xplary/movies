@@ -27,7 +27,6 @@ const episodeSelector = document.getElementById("episode-selector");
 
 document.addEventListener("DOMContentLoaded", () => {
   setupEventListeners();
-  checkBackendStatus();
   loadHomepage();
 });
 
@@ -69,11 +68,11 @@ function setupEventListeners() {
   });
 }
 
-// Petición robusta con Timeout (evita cuelgues en datos móviles lentos)
+// Petición robusta con Timeout para evitar bloqueos en datos móviles
 async function apiFetch(endpoint) {
   const url = endpoint === "/health" ? `${RENDER_URL}/health` : `${API_BASE}${endpoint}`;
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 segundos máx por petición
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
 
   try {
     const response = await fetch(url, { signal: controller.signal });
@@ -85,33 +84,6 @@ async function apiFetch(endpoint) {
     clearTimeout(timeoutId);
     console.error(err);
     throw err;
-  }
-}
-
-// SISTEMA DE REINTENTOS AMPLIADO (Hasta 10 intentos = ~40 segundos para cubrir el Cold Start de Render en móviles)
-async function checkBackendStatus() {
-  const badge = document.getElementById("status-badge");
-  badge.className = "api-status-badge loading";
-  badge.querySelector(".status-text").textContent = "Conectando...";
-
-  let attempts = 10; 
-  while (attempts > 0) {
-    try {
-      const data = await apiFetch("/health");
-      if (data && (data.status === "ok" || data.ok)) {
-        badge.className = "api-status-badge online";
-        badge.querySelector(".status-text").textContent = "Online";
-        return;
-      }
-    } catch (err) {
-      attempts--;
-      if (attempts === 0) {
-        badge.className = "api-status-badge offline";
-        badge.querySelector(".status-text").textContent = "Offline";
-      } else {
-        await new Promise(resolve => setTimeout(resolve, 4000));
-      }
-    }
   }
 }
 
@@ -156,14 +128,39 @@ function renderCarousel(container, items, type) {
   });
 }
 
+/* BÚSQUEDA INTELIGENTE CON SINÓNIMOS CRUZADOS (Ej: Spiderman <-> El hombre araña) */
 async function performSearch(query) {
   showGridView(`Búsqueda: "${query}"`);
   document.getElementById("results-loading").classList.remove("hidden");
   resultsGrid.innerHTML = "";
+  
   try {
-    const items = await apiFetch(`/search?s=${encodeURIComponent(query)}`);
+    let cleanQuery = query.trim();
+    let queriesToTry = [cleanQuery];
+    
+    const lowerQ = cleanQuery.toLowerCase();
+    if (lowerQ.includes("spiderman") || lowerQ.includes("spider man") || lowerQ.includes("spider-man")) {
+      queriesToTry.push("hombre araña");
+      queriesToTry.push("spider");
+    } else if (lowerQ.includes("hombre araña")) {
+      queriesToTry.push("spiderman");
+    } else if (lowerQ.includes("batman")) {
+      queriesToTry.push("caballero oscuro");
+    }
+
+    const promises = queriesToTry.map(q => apiFetch(`/search?s=${encodeURIComponent(q)}`).catch(() => []));
+    const resultsArrays = await Promise.all(promises);
+    
+    const combinedMap = new Map();
+    resultsArrays.flat().forEach(item => {
+      if (item && item.slug) {
+        combinedMap.set(item.slug, item);
+      }
+    });
+    
+    const items = Array.from(combinedMap.values());
     document.getElementById("results-loading").classList.add("hidden");
-    renderCarousel(resultsGrid, items || [], "search");
+    renderCarousel(resultsGrid, items, "search");
   } catch (err) {
     console.error(err);
     document.getElementById("results-loading").classList.add("hidden");
