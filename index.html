@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mi Cine Vercel</title>
+    <title>CineWeb - Películas</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -53,12 +53,12 @@
         <div class="bg-[#1e1e1e] p-8 rounded-lg w-full max-w-md shadow-2xl">
             <h3 class="text-xl font-bold mb-4">Configuración del Sistema</h3>
             
-            <label class="block text-sm text-gray-400 mb-2">TMDB API Key (Requerido)</label>
-            <input type="password" id="tmdb-key-input" class="w-full bg-[#2b2b2b] text-white p-2 rounded mb-4 outline-none border border-gray-700 focus:border-red-600" placeholder="Pega tu API Key de TMDB">
+            <label class="block text-sm text-gray-400 mb-2">TMDB API Key</label>
+            <input type="text" id="tmdb-key-input" class="w-full bg-[#2b2b2b] text-white p-2 rounded mb-4 outline-none border border-gray-700 focus:border-red-600" placeholder="Pega tu API Key de TMDB">
             
-            <label class="block text-sm text-gray-400 mb-2">URL del Backend (CinePro en Vercel)</label>
-            <input type="text" id="backend-url-input" class="w-full bg-[#2b2b2b] text-gray-400 p-2 rounded mb-6 outline-none border border-gray-700 cursor-not-allowed" value="https://core-beryl-pi.vercel.app" readonly>
-            <p class="text-xs text-green-500 mb-6 mt(-4)"><i class="fas fa-check-circle"></i> Enlazado correctamente a Vercel</p>
+            <label class="block text-sm text-gray-400 mb-2">URL del Backend (Render)</label>
+            <input type="text" id="backend-url-input" class="w-full bg-[#2b2b2b] text-gray-400 p-2 rounded mb-6 outline-none border border-gray-700 cursor-not-allowed" value="https://core-4c82.onrender.com" readonly>
+            <p class="text-xs text-green-500 mb-6 mt(-4)"><i class="fas fa-check-circle"></i> Enlazado a Render</p>
             
             <div class="flex justify-end space-x-3">
                 <button onclick="toggleSettings()" class="px-4 py-2 bg-gray-600 rounded hover:bg-gray-500 transition">Cancelar</button>
@@ -69,16 +69,18 @@
 
     <!-- Player Modal -->
     <div id="player-modal" class="fixed inset-0 bg-black bg-opacity-95 hidden flex-col justify-center items-center z-50">
-        <button onclick="closePlayer()" class="absolute top-5 right-5 text-white text-3xl hover:text-red-600 transition"><i class="fas fa-times"></i></button>
+        <button onclick="closePlayer()" class="absolute top-5 right-5 text-white text-3xl hover:text-red-600 transition z-50"><i class="fas fa-times"></i></button>
         <div class="loader" id="player-loader"></div>
-        <p id="player-status" class="text-gray-400 mt-4 hidden">Extrayendo enlaces de video desde Vercel...</p>
+        <p id="player-status" class="text-gray-400 mt-4 hidden">Conectando con Render...</p>
         <video id="video-player" class="w-full max-w-5xl rounded-lg shadow-2xl hidden bg-black" controls crossorigin playsinline></video>
     </div>
 
     <script>
         // --- CONFIGURACIÓN PRINCIPAL ---
-        const BACKEND_URL = 'https://core-beryl-pi.vercel.app';
-        let tmdbKey = localStorage.getItem('tmdbKey') || '';
+        const BACKEND_URL = 'https://core-4c82.onrender.com';
+        
+        // Ya he incluido tu API Key por defecto
+        let tmdbKey = localStorage.getItem('tmdbKey') || 'f6f6b797c560857281e0513011f50403';
 
         // --- DOM Elements ---
         const moviesGrid = document.getElementById('movies-grid');
@@ -182,22 +184,28 @@
             videoPlayer.classList.add('hidden');
             playerLoader.style.display = 'block';
             playerStatus.style.display = 'block';
-            playerStatus.innerText = `Buscando fuentes de ${title} en Vercel...`;
+            playerStatus.innerText = `Buscando fuentes de ${title} en Render... (esto puede tardar 10-20 segundos)`;
 
             try {
-                // CORRECCIÓN: La ruta correcta según la documentación de CinePro OMSS es /v1/movies/
-                const response = await fetch(`${BACKEND_URL}/v1/movies/${tmdbId}`);
+                // Primero intentamos la ruta de OMSS estándar
+                let response = await fetch(`${BACKEND_URL}/v1/movies/${tmdbId}`);
+                
+                // Si la ruta v1 falla, intentamos la ruta clásica por si acaso
+                if (response.status === 404) {
+                    console.log("Ruta /v1/movies/ no encontrada, probando /movie/ ...");
+                    response = await fetch(`${BACKEND_URL}/movie/${tmdbId}`);
+                }
                 
                 if (!response.ok) {
-                    throw new Error(`Error del servidor (${response.status}). Asegúrate de haber añadido CORS_ORIGIN=* en las variables de Vercel y redesplegado.`);
+                    throw new Error(`Error del servidor (${response.status}). Asegúrate de que el backend en Render esté activo.`);
                 }
                 
                 const data = await response.json();
-                console.log("Respuesta de CinePro:", data); // Para depurar en consola
+                console.log("Respuesta de CinePro:", data);
                 
                 let streamUrl = '';
                 
-                // CinePro/OMSS devuelve típicamente un array de 'sources' o 'streams'
+                // Extraer el enlace dependiendo de cómo responda el backend
                 if (data.sources && data.sources.length > 0) streamUrl = data.sources[0].url;
                 else if (data.streams && data.streams.length > 0) streamUrl = data.streams[0].url;
                 else if (data.streamUrl) streamUrl = data.streamUrl;
@@ -234,7 +242,6 @@
                     videoPlayer.play();
                 });
             } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl') || url.includes('.mp4')) {
-                // Soporte nativo (Safari) o archivos MP4 directos
                 videoPlayer.src = url;
                 videoPlayer.play();
             } else {
