@@ -10,9 +10,15 @@
   <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
   <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
   
+  <!-- Plyr & HLS (Para el reproductor de video premium) -->
+  <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+  <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
+  
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <!-- Fondos -->
   <div class="bg-shape shape-1"></div>
   <div class="bg-shape shape-2"></div>
 
@@ -41,10 +47,8 @@
           </div>
         </form>
       </div>
-
       <div class="api-status-badge online" id="status-badge">
-        <span class="status-dot"></span>
-        <span class="status-text">Online</span>
+        <span class="status-dot"></span><span class="status-text">Online</span>
       </div>
     </div>
   </nav>
@@ -84,21 +88,17 @@
         <button class="filter-chip" data-type="anime">⛩️ Anime</button>
       </div>
     </div>
-
     <div class="grid-header">
-      <h2 id="results-title">Resultados</h2>
-      <span class="results-count" id="results-count">0 items</span>
+      <h2 id="results-title">Resultados</h2><span class="results-count" id="results-count">0 items</span>
     </div>
-    
     <div class="loading-state hidden" id="results-loading"><div class="spinner"></div><p>Cargando...</p></div>
     <div class="downloads-empty hidden" id="results-empty"><ion-icon name="film-outline"></ion-icon><p>Sin resultados.</p></div>
     <div class="catalog-grid" id="results-grid"></div>
   </section>
 
-  <!-- THEATER MODAL (Direct Play) -->
+  <!-- THEATER MODAL (Direct Play nativo) -->
   <div id="theater-modal" class="hidden">
     <div class="theater-content">
-      <!-- Barra superior sutil (Aparece al hacer hover) -->
       <div class="theater-topbar">
         <div class="theater-info">
           <h3 id="theater-title">Cargando reproductor...</h3>
@@ -106,19 +106,21 @@
           <select id="episode-selector" class="subtle-select hidden" title="Capítulo"></select>
           <select id="server-selector" class="subtle-select hidden" title="Servidor de Video"></select>
         </div>
-        <button class="btn-close-theater" id="btn-close-theater" title="Cerrar reproductor">
-          <ion-icon name="close-outline"></ion-icon>
-        </button>
+        <button class="btn-close-theater" id="btn-close-theater" title="Cerrar reproductor"><ion-icon name="close-outline"></ion-icon></button>
       </div>
 
-      <!-- Cargador mientras extrae los enlaces -->
       <div id="theater-loader" class="theater-loader hidden">
         <div class="spinner"></div>
-        <p>Extrayendo el mejor servidor...</p>
+        <p id="loader-text">Extrayendo el mejor servidor...</p>
       </div>
 
-      <!-- Iframe del video a pantalla completa -->
-      <div class="iframe-container">
+      <!-- Reproductor Nativo HTML5 -->
+      <div class="video-container" id="video-container">
+        <video id="theater-video" playsinline controls></video>
+      </div>
+      
+      <!-- Contenedor Fallback Iframe (Por si el servidor encripta el video crudo) -->
+      <div class="iframe-container hidden" id="iframe-container">
         <iframe id="theater-iframe" src="" allowfullscreen></iframe>
       </div>
     </div>
