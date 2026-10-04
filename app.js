@@ -40,7 +40,6 @@ function showHomeView() {
   document.getElementById("nav-item-home").classList.add("active");
   searchInput.value = "";
   
-  // Reiniciar rotación de banner si regresa a inicio
   if (state.heroItems.length > 0 && !state.heroInterval) {
     setupHeroRotation(state.heroItems);
   }
@@ -51,7 +50,6 @@ function showGridView(titleText) {
   gridView.classList.remove("hidden");
   document.getElementById("results-title").textContent = titleText;
 
-  // Pausar banner para ahorrar recursos en la sección de catálogo/búsqueda
   if (state.heroInterval) {
     clearInterval(state.heroInterval);
     state.heroInterval = null;
@@ -64,9 +62,11 @@ function setupEventListeners() {
   
   document.getElementById("btn-close-theater").addEventListener("click", () => {
     theaterModal.classList.add("hidden");
-    theaterIframe.src = ""; // Detener video por completo al cerrar
+    theaterIframe.src = ""; 
     
-    // Reactivar rotación del banner principal al cerrar el reproductor
+    // RESTAURAR SCROLL DEL BODY AL CERRAR REPRODUCTOR
+    document.body.classList.remove("theater-open");
+    
     if (state.heroItems.length > 0 && !state.heroInterval) {
       setupHeroRotation(state.heroItems);
     }
@@ -230,7 +230,6 @@ async function setupHeroBanner(item) {
 }
 
 async function openTheaterMode(item) {
-  // PAUSAR EL BANNER PRINCIPAL PARA LIBERAR 100% LOS RECURSOS DE LA PÁGINA
   if (state.heroInterval) {
     clearInterval(state.heroInterval);
     state.heroInterval = null;
@@ -247,6 +246,9 @@ async function openTheaterMode(item) {
   nextServerBtn.classList.add("hidden");
   seasonSelector.classList.add("hidden");
   episodeSelector.classList.add("hidden");
+
+  // BLOQUEAR EL SCROLL DE LA PÁGINA DE FONDO AL ABRIR EL REPRODUCTOR
+  document.body.classList.add("theater-open");
 
   const cleanTitle = (item.title || '').replace("VER ", "").replace(" Online Gratis HD", "");
   theaterTitle.textContent = cleanTitle;
