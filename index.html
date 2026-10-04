@@ -182,25 +182,30 @@
             videoPlayer.classList.add('hidden');
             playerLoader.style.display = 'block';
             playerStatus.style.display = 'block';
-            playerStatus.innerText = `Extrayendo enlaces de ${title} desde Vercel...`;
+            playerStatus.innerText = `Buscando fuentes de ${title} en Vercel...`;
 
             try {
-                // Petición a tu Backend alojado en Vercel
-                const response = await fetch(`${BACKEND_URL}/movie/${tmdbId}`);
+                // CORRECCIÓN: La ruta correcta según la documentación de CinePro OMSS es /v1/movies/
+                const response = await fetch(`${BACKEND_URL}/v1/movies/${tmdbId}`);
                 
-                if (!response.ok) throw new Error('Tu backend en Vercel no respondió correctamente.');
+                if (!response.ok) {
+                    throw new Error(`Error del servidor (${response.status}). Asegúrate de haber añadido CORS_ORIGIN=* en las variables de Vercel y redesplegado.`);
+                }
                 
                 const data = await response.json();
+                console.log("Respuesta de CinePro:", data); // Para depurar en consola
                 
-                // Mapeo dinámico dependiendo de cómo CinePro emita el JSON
                 let streamUrl = '';
-                if (data.streamUrl) streamUrl = data.streamUrl;
+                
+                // CinePro/OMSS devuelve típicamente un array de 'sources' o 'streams'
+                if (data.sources && data.sources.length > 0) streamUrl = data.sources[0].url;
                 else if (data.streams && data.streams.length > 0) streamUrl = data.streams[0].url;
+                else if (data.streamUrl) streamUrl = data.streamUrl;
                 else if (Array.isArray(data) && data.length > 0) streamUrl = data[0].url;
                 else if (data.url) streamUrl = data.url;
 
                 if (!streamUrl) {
-                    throw new Error('No se encontraron streams disponibles para esta película.');
+                    throw new Error('CinePro no encontró ningún enlace disponible para esta película.');
                 }
 
                 playerStatus.style.display = 'none';
