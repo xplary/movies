@@ -6,35 +6,36 @@ const state = {
   activeType: "movie",
   results: [],
   selectedMedia: null,
-  activeSeason: 1,
-  activeEpisode: 1,
-  filters: { type: 'all', genre: '', minRating: 0, sortBy: 'default' },
-  genres: [],
-  currentPage: 1,
   heroItems: [],
   heroIndex: 0,
   heroInterval: null
 };
 
-// DOM Elements
+// DOM Elements Generales
 const searchForm = document.getElementById("search-form");
 const searchInput = document.getElementById("search-input");
 const filterTabs = document.querySelectorAll(".filter-tab");
 const resultsGrid = document.getElementById("results-grid");
 const homeView = document.getElementById("home-view");
 const gridView = document.getElementById("grid-view");
-const detailsPanel = document.getElementById("details-panel");
-const videoPlayerContainer = document.getElementById("video-player-container");
-const playerIframe = document.getElementById("player-iframe");
 
-// Init
+// DOM Elements del Modo Cine
+const theaterModal = document.getElementById("theater-modal");
+const theaterTitle = document.getElementById("theater-title");
+const theaterLoader = document.getElementById("theater-loader");
+const theaterIframe = document.getElementById("theater-iframe");
+const serverSelector = document.getElementById("server-selector");
+const seasonSelector = document.getElementById("season-selector");
+const episodeSelector = document.getElementById("episode-selector");
+
+// Inicialización
 document.addEventListener("DOMContentLoaded", () => {
   setupEventListeners();
   checkBackendStatus();
   loadHomepage();
 });
 
-// SPA Navigation
+// Navegación
 function showHomeView() {
   homeView.classList.remove("hidden");
   gridView.classList.add("hidden");
@@ -49,41 +50,37 @@ function showGridView(titleText) {
   document.getElementById("results-title").textContent = titleText;
 }
 
-function closeDetailsModal() {
-  detailsPanel.classList.add("hidden");
-  playerIframe.src = "";
-  videoPlayerContainer.classList.add("hidden");
-}
-
+// Eventos Base
 function setupEventListeners() {
   document.getElementById("nav-link-home").addEventListener("click", showHomeView);
   document.getElementById("brand-logo").addEventListener("click", showHomeView);
-  document.getElementById("modal-backdrop-close").addEventListener("click", closeDetailsModal);
-  document.getElementById("btn-close-modal").addEventListener("click", closeDetailsModal);
-  document.getElementById("close-player-btn").addEventListener("click", () => {
-    videoPlayerContainer.classList.add("hidden");
-    playerIframe.src = "";
+  
+  // Cerrar Modo Cine
+  document.getElementById("btn-close-theater").addEventListener("click", () => {
+    theaterModal.classList.add("hidden");
+    theaterIframe.src = "";
   });
 
+  // Buscador
   searchForm.addEventListener("submit", (e) => {
     e.preventDefault();
     if (searchInput.value.trim()) performSearch(searchInput.value.trim());
   });
 
+  // Filtros del Navbar
   filterTabs.forEach(tab => {
     tab.addEventListener("click", () => {
       const type = tab.getAttribute("data-type");
       state.activeType = type;
-      showGridView(`Catálogo: ${type}`);
+      showGridView(`Catálogo: ${type === 'movie' ? 'Películas' : type === 'series' ? 'Series' : 'Anime'}`);
       loadFilteredCatalog(type);
     });
   });
 }
 
-// Custom Fetch apuntando a Render
+// Fetch seguro a tu API
 async function apiFetch(endpoint) {
   try {
-    // Si es /health, usa la ruta base, sino usa API_BASE
     const url = endpoint === "/health" ? `${RENDER_URL}/health` : `${API_BASE}${endpoint}`;
     const response = await fetch(url);
     const json = await response.json();
@@ -95,7 +92,7 @@ async function apiFetch(endpoint) {
   }
 }
 
-// Health Check
+// Estado del Servidor
 async function checkBackendStatus() {
   const badge = document.getElementById("status-badge");
   try {
@@ -110,7 +107,7 @@ async function checkBackendStatus() {
   }
 }
 
-// Cargar Inicio
+// Cargar Portada
 async function loadHomepage() {
   try {
     const [moviesData, seriesData, animeData] = await Promise.all([
@@ -130,6 +127,7 @@ async function loadHomepage() {
   }
 }
 
+// Renderizar Tarjetas
 function renderCarousel(container, items, type) {
   container.innerHTML = "";
   items.forEach(item => {
@@ -146,11 +144,14 @@ function renderCarousel(container, items, type) {
         <h3>${item.title.replace("VER ", "").replace(" Online Gratis HD", "")}</h3>
       </div>
     `;
-    card.onclick = () => loadMediaDetails(item);
+    
+    // AQUÍ ES LA MAGIA: Al hacer clic, lanza el Modo Cine directamente
+    card.onclick = () => openTheaterMode(item);
     container.appendChild(card);
   });
 }
 
+// Buscador General
 async function performSearch(query) {
   showGridView(`Búsqueda: "${query}"`);
   document.getElementById("results-loading").classList.remove("hidden");
@@ -164,6 +165,7 @@ async function performSearch(query) {
   }
 }
 
+// Catálogo por Categoría
 async function loadFilteredCatalog(type) {
   document.getElementById("results-loading").classList.remove("hidden");
   resultsGrid.innerHTML = "";
@@ -176,7 +178,7 @@ async function loadFilteredCatalog(type) {
   }
 }
 
-// Hero Banner Logic
+// Animación del Hero Banner
 function setupHeroRotation(items) {
   if (!items || items.length === 0) return;
   state.heroItems = items.slice(0, 5);
@@ -193,104 +195,146 @@ async function setupHeroBanner(item) {
   banner.style.backgroundImage = `url('${item.poster}')`;
   document.getElementById("hero-title").textContent = item.title;
   document.getElementById("hero-rating").textContent = item.rating || "N/A";
+  document.getElementById("hero-synopsis").textContent = "Haz clic en reproducir para disfrutar de esta sugerencia...";
   
-  document.getElementById("hero-play-btn").onclick = () => loadMediaDetails(item);
-  document.getElementById("hero-info-btn").onclick = () => loadMediaDetails(item);
+  // Reproducción Directa en el Banner
+  document.getElementById("hero-play-btn").onclick = () => openTheaterMode(item);
 }
 
-// Modal y Servidores
-async function loadMediaDetails(item) {
-  detailsPanel.classList.remove("hidden");
-  document.getElementById("details-poster").src = item.poster;
-  document.getElementById("details-title").textContent = item.title;
-  document.getElementById("details-synopsis").textContent = "Cargando...";
-  document.getElementById("servers-container").innerHTML = "";
-  document.getElementById("seasons-section").classList.add("hidden");
+
+// ==========================================
+// MODO CINE AUTOMÁTICO (Theater Mode)
+// ==========================================
+
+async function openTheaterMode(item) {
+  // Limpiar y mostrar modal
+  theaterModal.classList.remove("hidden");
+  theaterLoader.classList.remove("hidden");
+  theaterIframe.src = "";
+  serverSelector.innerHTML = "";
+  seasonSelector.innerHTML = "";
+  episodeSelector.innerHTML = "";
   
+  serverSelector.classList.add("hidden");
+  seasonSelector.classList.add("hidden");
+  episodeSelector.classList.add("hidden");
+
+  // Título Limpio
+  const cleanTitle = item.title.replace("VER ", "").replace(" Online Gratis HD", "");
+  theaterTitle.textContent = cleanTitle;
+
   try {
+    // 1. Obtener Info Completa (Servidores si es Peli, Temporadas si es Serie)
     const fullInfo = await apiFetch(`/info/${item.slug}?type=${item.type}&provider=${item.provider || ''}`);
     state.selectedMedia = fullInfo;
-    document.getElementById("details-synopsis").textContent = fullInfo.synopsis || "Sin sinopsis.";
-    
+
     if (fullInfo.type === "movie") {
-      renderServers(fullInfo.servers || []);
+      // ES PELÍCULA
+      autoPlayBestServer(fullInfo.servers || []);
     } else {
-      document.getElementById("seasons-section").classList.remove("hidden");
-      renderSeasonsTabs(fullInfo.seasons || []);
+      // ES SERIE O ANIME
+      seasonSelector.classList.remove("hidden");
+      episodeSelector.classList.remove("hidden");
+
+      const seasons = fullInfo.seasons || [];
+      if (seasons.length === 0) throw new Error("No hay temporadas");
+
+      // Poblar Select de Temporadas
+      seasons.forEach(s => {
+        const opt = document.createElement("option");
+        opt.value = s.number;
+        opt.textContent = s.name || `Temporada ${s.number}`;
+        seasonSelector.appendChild(opt);
+      });
+
+      // Cambio de Temporada
+      seasonSelector.onchange = () => {
+        const selectedSeason = seasons.find(s => s.number == seasonSelector.value);
+        populateEpisodes(selectedSeason.episodes);
+      };
+
+      // Poblar Select de Episodios
+      function populateEpisodes(episodes) {
+        episodeSelector.innerHTML = "";
+        episodes.forEach(e => {
+          const opt = document.createElement("option");
+          opt.value = e.number;
+          opt.textContent = `Capítulo ${e.number}`;
+          episodeSelector.appendChild(opt);
+        });
+        
+        // Auto-reproducir primer capítulo al cambiar de temporada
+        if (episodes.length > 0) {
+          episodeSelector.value = episodes[0].number;
+          loadEpisodeServers(seasonSelector.value, episodeSelector.value);
+        }
+      }
+
+      // Cambio de Episodio Manual
+      episodeSelector.onchange = () => loadEpisodeServers(seasonSelector.value, episodeSelector.value);
+
+      // ARRANCAR AUTOMÁTICAMENTE T1 C1
+      seasonSelector.value = seasons[0].number;
+      populateEpisodes(seasons[0].episodes);
     }
   } catch (err) {
-    console.error(err);
+    console.error("Error al cargar Modo Cine:", err);
+    theaterTitle.textContent = "Error al conectar con el servidor.";
+    theaterLoader.classList.add("hidden");
   }
 }
 
-function renderSeasonsTabs(seasons) {
-  const container = document.getElementById("seasons-tabs-container");
-  container.innerHTML = "";
-  seasons.forEach((s, i) => {
-    const btn = document.createElement("button");
-    btn.className = `season-tab ${i === 0 ? "active" : ""}`;
-    btn.textContent = s.name || `Temp ${s.number}`;
-    btn.onclick = () => {
-      document.querySelectorAll(".season-tab").forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-      state.activeSeason = s.number;
-      renderEpisodes(s.episodes || []);
-    };
-    container.appendChild(btn);
-  });
-  if (seasons.length > 0) renderEpisodes(seasons[0].episodes || []);
-}
-
-function renderEpisodes(episodes) {
-  const container = document.getElementById("episodes-container");
-  container.innerHTML = "";
-  episodes.forEach((e, i) => {
-    const btn = document.createElement("button");
-    btn.className = `episode-btn ${i === 0 ? "active" : ""}`;
-    btn.textContent = e.number;
-    btn.onclick = () => {
-      document.querySelectorAll(".episode-btn").forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-      state.activeEpisode = e.number;
-      fetchEpisodeServers(e);
-    };
-    container.appendChild(btn);
-  });
-  if (episodes.length > 0) fetchEpisodeServers(episodes[0]);
-}
-
-async function fetchEpisodeServers(episode) {
-  document.getElementById("servers-container").innerHTML = "<p>Buscando servidores...</p>";
+// Cargar servidores de un capítulo específico
+async function loadEpisodeServers(season, episode) {
+  theaterLoader.classList.remove("hidden");
+  serverSelector.classList.add("hidden");
+  theaterIframe.src = "";
+  
   try {
-    const data = await apiFetch(`/servers?slug=${state.selectedMedia.slug}&season=${state.activeSeason}&episode=${episode.number}&provider=${state.selectedMedia.provider || ''}`);
-    renderServers(data.servers || []);
+    const data = await apiFetch(`/servers?slug=${state.selectedMedia.slug}&season=${season}&episode=${episode}&provider=${state.selectedMedia.provider || ''}`);
+    autoPlayBestServer(data.servers || []);
   } catch (err) {
-    document.getElementById("servers-container").innerHTML = "<p>Error de servidores</p>";
+    console.error(err);
+    theaterLoader.classList.add("hidden");
   }
 }
 
-function renderServers(servers) {
-  const container = document.getElementById("servers-container");
-  container.innerHTML = "";
-  if (servers.length === 0) {
-    container.innerHTML = "<p>No hay servidores disponibles.</p>";
+// Algoritmo de Auto-Reproducción (Elige Latino por defecto)
+function autoPlayBestServer(servers) {
+  if (!servers || servers.length === 0) {
+    theaterTitle.textContent = "Sin servidores disponibles";
+    theaterLoader.classList.add("hidden");
     return;
   }
-  
-  servers.forEach(server => {
-    const row = document.createElement("div");
-    row.className = "server-row";
-    row.innerHTML = `
-      <div class="server-info">
-        <span style="font-weight: bold; color: white;">${server.name.toUpperCase()}</span>
-        <span style="color: #e50914; font-size: 12px; margin-left: 10px;">${server.language}</span>
-      </div>
-      <button class="btn-action play">▶ Ver</button>
-    `;
-    row.querySelector(".play").onclick = () => {
-      document.getElementById("player-iframe").src = server.embedUrl || server.url || server.link;
-      document.getElementById("video-player-container").classList.remove("hidden");
-    };
-    container.appendChild(row);
+
+  // Orden Inteligente: Latino Primero
+  servers.sort((a, b) => {
+    const aLat = (a.language || '').toLowerCase().includes('latino');
+    const bLat = (b.language || '').toLowerCase().includes('latino');
+    if (aLat && !bLat) return -1;
+    if (!aLat && bLat) return 1;
+    return 0;
   });
+
+  // Llenar el Dropdown Superior (Sutil)
+  serverSelector.innerHTML = "";
+  servers.forEach(srv => {
+    const opt = document.createElement("option");
+    opt.value = srv.embedUrl || srv.url || srv.link;
+    opt.textContent = `Servidor: ${srv.name.toUpperCase()} (${srv.language})`;
+    serverSelector.appendChild(opt);
+  });
+
+  // Cambio Manual de Servidor
+  serverSelector.classList.remove("hidden");
+  serverSelector.onchange = () => {
+    theaterIframe.src = serverSelector.value;
+  };
+
+  // ¡MAGIA! Seleccionar el primero e inyectarlo al Iframe automáticamente
+  serverSelector.value = servers[0].embedUrl || servers[0].url || servers[0].link;
+  theaterIframe.src = serverSelector.value;
+  
+  // Ocultar Loader
+  theaterLoader.classList.add("hidden");
 }
