@@ -273,9 +273,20 @@ function setupHeroRotation(items) {
   }, 8000);
 }
 
+// 🎬 ESTA ES LA FUNCIÓN MODIFICADA PARA EVITAR EL FONDO BORROSO 🎬
 async function setupHeroBanner(item) {
   const banner = document.getElementById("hero-banner");
-  banner.style.backgroundImage = `url('${item.poster || 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=1600'}')`;
+  
+  // 1. Prioriza 'backdrop' (imagen horizontal). Si no existe, usa el poster normal.
+  let heroImg = item.backdrop || item.poster || 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=1600';
+
+  // 2. Si la URL es de una API estándar y viene en baja resolución (w300, w500, etc), 
+  // reemplazamos ese parámetro por '/original/' para descargar la calidad en HD real.
+  if (heroImg && typeof heroImg === 'string') {
+    heroImg = heroImg.replace(/\/(w185|w200|w300|w342|w400|w500|w780)\//gi, '/original/');
+  }
+
+  banner.style.backgroundImage = `url('${heroImg}')`;
   document.getElementById("hero-title").textContent = item.title;
   document.getElementById("hero-rating").textContent = item.rating || "N/A";
   document.getElementById("hero-synopsis").textContent = "Haz clic en reproducir para disfrutar de esta sugerencia...";
