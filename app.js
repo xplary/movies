@@ -277,17 +277,38 @@ function setupHeroRotation(items) {
 async function setupHeroBanner(item) {
   const banner = document.getElementById("hero-banner");
   
-  // 1. Prioriza 'backdrop' (imagen horizontal). Si no existe, usa el poster normal.
   let heroImg = item.backdrop || item.poster || 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=1600';
 
-  // 2. Si la URL es de una API estándar y viene en baja resolución (w300, w500, etc), 
-  // reemplazamos ese parámetro por '/original/' para descargar la calidad en HD real.
   if (heroImg && typeof heroImg === 'string') {
-    heroImg = heroImg.replace(/\/(w185|w200|w300|w342|w400|w500|w780)\//gi, '/original/');
+    // 1. Forzar HD si la imagen viene de TMDB (reemplaza /w200/, /w500/, etc. por /original/)
+    heroImg = heroImg.replace(/\/w\d+\//gi, '/original/');
+    
+    // 2. Forzar HD si la API usa imágenes de Google/Blogger (muy común en Pelisplus)
+    // Reemplaza tamaños pequeños como /s320/, /s400/, /s320-rw/ por /s0/ (tamaño original sin comprimir)
+    heroImg = heroImg.replace(/\/s\d+(-[a-z]+)?\//gi, '/s0/');
   }
 
+  // Pre-cargar la imagen para que el cambio sea suave
+  const imgPreload = new Image();
+  imgPreload.src = heroImg;
+  imgPreload.onload = () => {
+    banner.style.backgroundImage = `url('${heroImg}')`;
+  };
   banner.style.backgroundImage = `url('${heroImg}')`;
-  document.getElementById("hero-title").textContent = item.title;
+
+  // Limpiar "VER " y "Online Gratis HD" del banner principal
+  let cleanTitle = (item.title || '')
+    .replace("VER ", "")
+    .replace(" Online Gratis HD", "");
+    
+  // Truco para arreglar los caracteres raros (como el "hipÃ³tesis" de tu captura)
+  try {
+    cleanTitle = decodeURIComponent(escape(cleanTitle));
+  } catch (e) {
+    // Si falla, se queda con el texto normal
+  }
+  
+  document.getElementById("hero-title").textContent = cleanTitle;
   document.getElementById("hero-rating").textContent = item.rating || "N/A";
   document.getElementById("hero-synopsis").textContent = "Haz clic en reproducir para disfrutar de esta sugerencia...";
   document.getElementById("hero-play-btn").onclick = () => openTheaterMode(item);
