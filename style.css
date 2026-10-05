@@ -59,10 +59,47 @@ body.theater-open {
 .close-notice:hover { color: white; }
 @keyframes fadeInNotice { from { opacity: 0; transform: translate(-50%, -12px); } to { opacity: 1; transform: translate(-50%, 0); } }
 
-/* Hero Banner */
-.hero-banner { height: 75vh; background-size: cover; background-position: center center; background-repeat: no-repeat; display: flex; align-items: flex-end; position: relative; }
-.hero-banner::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, var(--bg-color) 0%, rgba(7,6,10,0.4) 50%, transparent 100%); }
-.hero-content { position: relative; z-index: 10; padding: 50px; max-width: 650px; }
+/* Hero Banner con Desenfoque Cinemático Inteligente */
+.hero-banner { 
+  height: 75vh; 
+  background-size: cover; 
+  background-position: center center; 
+  background-repeat: no-repeat; 
+  display: flex; 
+  align-items: flex-end; 
+  position: relative; 
+  overflow: hidden; 
+}
+
+/* Capa de fondo difuminada para evitar ver la imagen pixelada o estirada */
+.hero-banner::before {
+  content: '';
+  position: absolute;
+  inset: -20px;
+  background-image: inherit;
+  background-size: cover;
+  background-position: center;
+  filter: blur(25px);
+  opacity: 0.6;
+  z-index: 1;
+}
+
+/* Capa oscura superior para preservar la legibilidad del texto */
+.hero-banner::after { 
+  content: ''; 
+  position: absolute; 
+  inset: 0; 
+  background: linear-gradient(to top, var(--bg-color) 0%, rgba(7,6,10,0.7) 50%, rgba(7,6,10,0.4) 100%); 
+  z-index: 2; 
+}
+
+.hero-content { 
+  position: relative; 
+  z-index: 10; 
+  padding: 50px; 
+  max-width: 650px; 
+}
+
 .hero-type-badge { background: var(--primary-gradient); font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 6px; letter-spacing: 1px; color: white; }
 .hero-title { font-size: 3.5rem; margin: 12px 0; font-weight: 900; line-height: 1.1; }
 .hero-meta-row { display: flex; gap: 15px; margin-bottom: 15px; color: var(--text-muted); font-weight: 600; font-size: 14px; }
