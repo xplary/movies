@@ -1,5 +1,6 @@
 const RENDER_URL = "https://peliapi-8q6q.onrender.com";
 const API_BASE = `${RENDER_URL}/api/v1/content`;
+const CACHE_KEY = "vest_home_cache"; // Llave para guardar el caché
 
 const state = {
   activeType: "movie",
@@ -28,60 +29,11 @@ const nextServerBtn = document.getElementById("btn-next-server");
 const seasonSelector = document.getElementById("season-selector");
 const episodeSelector = document.getElementById("episode-selector");
 
-document.addEventListener("DOMContentLoaded", async () => {
+document.addEventListener("DOMContentLoaded", () => {
   setupEventListeners();
   checkAdblockNotice();
-  
-  // Esperar a que Render despierte antes de intentar cargar la página
-  await wakeUpBackend();
-  
   loadHomepage();
 });
-
-// Función para despertar el backend en Render
-async function wakeUpBackend() {
-  const loader = document.getElementById("render-loader");
-  const statusText = document.getElementById("loader-status");
-  let attempts = 0;
-  const maxAttempts = 20;
-
-  while (attempts < maxAttempts) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000); 
-      
-      const response = await fetch(`${RENDER_URL}/health`, { signal: controller.signal });
-      clearTimeout(timeoutId);
-
-      if (response.ok) {
-        if (loader) {
-          loader.classList.add("fade-out");
-          setTimeout(() => loader.remove(), 500); 
-        }
-        return;
-      }
-    } catch (err) {
-      attempts++;
-      if (statusText) {
-        if (attempts === 3) {
-          statusText.textContent = "El servidor está despertando...";
-        } else if (attempts === 8) {
-          statusText.textContent = "Preparando el catálogo, ya casi...";
-        } else if (attempts === 13) {
-          statusText.textContent = "Últimos ajustes, gracias por la paciencia...";
-        }
-      }
-    }
-    // Esperar 3 segundos antes del siguiente intento
-    await new Promise(resolve => setTimeout(resolve, 3000));
-  }
-
-  // Si pasa el tiempo y no responde, ocultar igual para que la web lo intente
-  if (loader) {
-    loader.classList.add("fade-out");
-    setTimeout(() => loader.remove(), 500);
-  }
-}
 
 // Comprobar si ya se vio el aviso de uBlock
 function checkAdblockNotice() {
@@ -102,10 +54,9 @@ function getContinueWatching() {
 
 function saveToContinueWatching(item) {
   let list = getContinueWatching();
-  // Evitar duplicados y poner el más reciente al inicio
   list = list.filter(i => i.slug !== item.slug);
   list.unshift(item);
-  if (list.length > 10) list = list.slice(0, 10); // Máximo 10 elementos
+  if (list.length > 10) list = list.slice(0, 10);
   localStorage.setItem("vest_continue_watching", JSON.stringify(list));
   renderContinueWatching();
 }
@@ -132,7 +83,7 @@ function showHomeView() {
   document.getElementById("nav-item-home").classList.add("active");
   searchInput.value = "";
   
-  renderContinueWatching(); // Actualizar fila de caché al volver al inicio
+  renderContinueWatching();
 
   if (state.heroItems.length > 0 && !state.heroInterval) {
     setupHeroRotation(state.heroItems);
@@ -196,11 +147,12 @@ function setupEventListeners() {
   });
 }
 
-// Petición robusta con Timeout
+// Petición robusta con Timeout AMPLIO (60s) para soportar la hibernación
 async function apiFetch(endpoint) {
   const url = endpoint === "/health" ? `${RENDER_URL}/health` : `${API_BASE}${endpoint}`;
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  // Ampliado a 60s para que no de error si el usuario hace clic mientras Render despierta
+  const timeoutId = setTimeout(() => controller.abort(), 60000); 
 
   try {
     const response = await fetch(url, { signal: controller.signal });
@@ -215,24 +167,78 @@ async function apiFetch(endpoint) {
   }
 }
 
+// ESTA ES LA FUNCIÓN PRINCIPAL MODIFICADA (Lógica Stale-while-revalidate)
 async function loadHomepage() {
-  renderContinueWatching(); // Cargar caché al iniciar
+  renderContinueWatching();
+
+  // 1. Mostrar inmediatamente lo que haya en caché (para disimular la hibernación)
+  const cachedData = localStorage.getItem(CACHE_KEY);
+  if (cachedData) {
+    try {
+      const parsedCache = JSON.parse(cachedData);
+      renderCarousel(document.getElementById("carousel-movies"), parsedCache.movies || [], "movie");
+      renderCarousel(document.getElementById("carousel-series"), parsedCache.series || [], "series");
+      renderCarousel(document.getElementById("carousel-anime"), parsedCache.anime || [], "anime");
+      
+      const allHeroCandidates = [...(parsedCache.movies||[]), ...(parsedCache.series||[])].filter(i => parseFloat(i.rating) >= 7.5);
+      setupHeroRotation(allHeroCandidates);
+    } catch (e) {
+      console.error("Error leyendo el caché", e);
+    }
+  }
+
+  // 2. Intentar obtener datos frescos en segundo plano
+  fetchFreshData();
+}
+
+async function fetchFreshData() {
   try {
+    // Timeout local solo para esta parte, si falla pasamos al ciclo silencioso
     const [moviesData, seriesData, animeData] = await Promise.all([
       apiFetch("/catalog?type=movie&page=1").catch(() => null),
       apiFetch("/catalog?type=series&page=1").catch(() => null),
       apiFetch("/catalog?type=anime&page=1").catch(() => null)
     ]);
     
-    renderCarousel(document.getElementById("carousel-movies"), moviesData?.items || [], "movie");
-    renderCarousel(document.getElementById("carousel-series"), seriesData?.items || [], "series");
-    renderCarousel(document.getElementById("carousel-anime"), animeData?.items || [], "anime");
-    
-    const allHeroCandidates = [...(moviesData?.items||[]), ...(seriesData?.items||[])].filter(i => parseFloat(i.rating) >= 7.5);
-    setupHeroRotation(allHeroCandidates);
+    if (moviesData && seriesData && animeData) {
+      // Guardar en caché para la próxima visita
+      const freshCache = {
+        movies: moviesData.items || [],
+        series: seriesData.items || [],
+        anime: animeData.items || []
+      };
+      localStorage.setItem(CACHE_KEY, JSON.stringify(freshCache));
+
+      // Actualizar la vista de forma invisible y fluida
+      renderCarousel(document.getElementById("carousel-movies"), freshCache.movies, "movie");
+      renderCarousel(document.getElementById("carousel-series"), freshCache.series, "series");
+      renderCarousel(document.getElementById("carousel-anime"), freshCache.anime, "anime");
+      
+      const allHeroCandidates = [...freshCache.movies, ...freshCache.series].filter(i => parseFloat(i.rating) >= 7.5);
+      setupHeroRotation(allHeroCandidates);
+    } else {
+      // Si devolvió null (falló por hibernación), activamos el despertador silencioso
+      silentWakeUp();
+    }
   } catch (err) {
-    console.error("Error home:", err);
+    // Si dio error general, también intentamos despertar el servidor
+    silentWakeUp();
   }
+}
+
+// Función para insistirle a Render hasta que despierte y luego actualizar los datos
+async function silentWakeUp() {
+  const checkInterval = setInterval(async () => {
+    try {
+      const response = await fetch(`${RENDER_URL}/health`);
+      if (response.ok) {
+        clearInterval(checkInterval);
+        fetchFreshData(); // El servidor despertó, volvemos a pedir las películas
+      }
+    } catch (e) {
+      // Sigue durmiendo, lo intentará de nuevo en 5 segundos
+    }
+  }, 5000);
 }
 
 function renderCarousel(container, items, type) {
@@ -322,22 +328,17 @@ function setupHeroRotation(items) {
   }, 8000);
 }
 
-// 🎬 ESTA ES LA FUNCIÓN MODIFICADA PARA EVITAR EL FONDO BORROSO 🎬
+// 🎬 FUNCIÓN MODIFICADA PARA EVITAR EL FONDO BORROSO 🎬
 async function setupHeroBanner(item) {
   const banner = document.getElementById("hero-banner");
   
   let heroImg = item.backdrop || item.poster || 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=1600';
 
   if (heroImg && typeof heroImg === 'string') {
-    // 1. Forzar HD si la imagen viene de TMDB (reemplaza /w200/, /w500/, etc. por /original/)
     heroImg = heroImg.replace(/\/w\d+\//gi, '/original/');
-    
-    // 2. Forzar HD si la API usa imágenes de Google/Blogger (muy común en Pelisplus)
-    // Reemplaza tamaños pequeños como /s320/, /s400/, /s320-rw/ por /s0/ (tamaño original sin comprimir)
     heroImg = heroImg.replace(/\/s\d+(-[a-z]+)?\//gi, '/s0/');
   }
 
-  // Pre-cargar la imagen para que el cambio sea suave
   const imgPreload = new Image();
   imgPreload.src = heroImg;
   imgPreload.onload = () => {
@@ -345,16 +346,13 @@ async function setupHeroBanner(item) {
   };
   banner.style.backgroundImage = `url('${heroImg}')`;
 
-  // Limpiar "VER " y "Online Gratis HD" del banner principal
   let cleanTitle = (item.title || '')
     .replace("VER ", "")
     .replace(" Online Gratis HD", "");
     
-  // Truco para arreglar los caracteres raros (como el "hipÃ³tesis" de tu captura)
   try {
     cleanTitle = decodeURIComponent(escape(cleanTitle));
   } catch (e) {
-    // Si falla, se queda con el texto normal
   }
   
   document.getElementById("hero-title").textContent = cleanTitle;
@@ -364,7 +362,6 @@ async function setupHeroBanner(item) {
 }
 
 async function openTheaterMode(item) {
-  // Guardar en el caché local de "Seguir Viendo" al reproducir
   saveToContinueWatching(item);
 
   if (state.heroInterval) {
