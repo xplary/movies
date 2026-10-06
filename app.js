@@ -28,11 +28,60 @@ const nextServerBtn = document.getElementById("btn-next-server");
 const seasonSelector = document.getElementById("season-selector");
 const episodeSelector = document.getElementById("episode-selector");
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   setupEventListeners();
   checkAdblockNotice();
+  
+  // Esperar a que Render despierte antes de intentar cargar la página
+  await wakeUpBackend();
+  
   loadHomepage();
 });
+
+// Función para despertar el backend en Render
+async function wakeUpBackend() {
+  const loader = document.getElementById("render-loader");
+  const statusText = document.getElementById("loader-status");
+  let attempts = 0;
+  const maxAttempts = 20;
+
+  while (attempts < maxAttempts) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); 
+      
+      const response = await fetch(`${RENDER_URL}/health`, { signal: controller.signal });
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        if (loader) {
+          loader.classList.add("fade-out");
+          setTimeout(() => loader.remove(), 500); 
+        }
+        return;
+      }
+    } catch (err) {
+      attempts++;
+      if (statusText) {
+        if (attempts === 3) {
+          statusText.textContent = "El servidor está despertando...";
+        } else if (attempts === 8) {
+          statusText.textContent = "Preparando el catálogo, ya casi...";
+        } else if (attempts === 13) {
+          statusText.textContent = "Últimos ajustes, gracias por la paciencia...";
+        }
+      }
+    }
+    // Esperar 3 segundos antes del siguiente intento
+    await new Promise(resolve => setTimeout(resolve, 3000));
+  }
+
+  // Si pasa el tiempo y no responde, ocultar igual para que la web lo intente
+  if (loader) {
+    loader.classList.add("fade-out");
+    setTimeout(() => loader.remove(), 500);
+  }
+}
 
 // Comprobar si ya se vio el aviso de uBlock
 function checkAdblockNotice() {
